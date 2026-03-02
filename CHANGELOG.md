@@ -11,12 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Release metadata sync.
 
 
-## [1.12.1] — 2026-03-01
-
-### Changed
-- Release metadata sync.
-
-
 ## [1.11.0] — 2026-02-28
 
 ### Changed

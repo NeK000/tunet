@@ -4,10 +4,6 @@
 
 - Release metadata sync.
 
-## 1.12.1
-
-- Release metadata sync.
-
 ## 1.11.0
 
 - Includes dashboard release `1.11.0`.
