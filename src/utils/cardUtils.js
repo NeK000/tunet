@@ -16,6 +16,7 @@ const REMOVABLE_PREFIXES = [
   'vacuum.',
   'media_player.',
   'media_group_',
+  'sonos_group_',
   'weather_temp_',
   'calendar_card_',
   'climate_card_',
@@ -35,6 +36,7 @@ const REMOVABLE_PREFIXES = [
 /** Prefixes for "special" composite cards that don't map 1:1 to an entity. */
 const SPECIAL_CARD_PREFIXES = [
   'media_group_',
+  'sonos_group_',
   'weather_temp_',
   'calendar_card_',
   'climate_card_',
@@ -82,7 +84,7 @@ export function isCardHiddenByLogic(
     return true;
   }
 
-  if (cardId.startsWith('media_group_')) {
+  if (cardId.startsWith('media_group_') || cardId.startsWith('sonos_group_')) {
     const groupSettings = cardConfig;
     const selectedIds = Array.isArray(groupSettings.mediaIds) ? groupSettings.mediaIds : [];
     const hasEntities = selectedIds.some((id) => entities[id]);
@@ -136,10 +138,14 @@ export function isCardHiddenByLogic(
 export function isMediaPage(pageId, pageSettings) {
   if (!pageId) return false;
   const settings = pageSettings[pageId];
-  return (
-    settings?.type === 'media' ||
-    settings?.type === 'sonos' ||
-    pageId.startsWith('media') ||
-    pageId.startsWith('sonos')
-  );
+  return settings?.type === 'media' || pageId.startsWith('media');
+}
+
+/**
+ * Check if a page is a SONOS page.
+ */
+export function isSonosPage(pageId, pageSettings) {
+  if (!pageId) return false;
+  const settings = pageSettings[pageId];
+  return settings?.type === 'sonos' || pageId.startsWith('sonos');
 }

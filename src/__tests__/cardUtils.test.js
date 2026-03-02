@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isCardRemovable, isCardHiddenByLogic, isMediaPage } from '../utils/cardUtils';
+import { isCardRemovable, isCardHiddenByLogic, isMediaPage, isSonosPage } from '../utils/cardUtils';
 
 // ═════════════════════════════════════════════════════════════════════════
 // isCardRemovable
@@ -135,6 +135,18 @@ describe('isCardHiddenByLogic', () => {
         entities,
       })
     ).toBe(false);
+  });
+
+  it('hides sonos_group_ with no valid entities', () => {
+    const settings = { sonos_group_1: { mediaIds: ['player.a'] } };
+    expect(
+      isCardHiddenByLogic('sonos_group_1', {
+        activePage: 'home',
+        getCardSettingsKey: identity,
+        cardSettings: settings,
+        entities: {},
+      })
+    ).toBe(true);
   });
 
   it('applies visibilityCondition to media_group_ cards', () => {
@@ -437,19 +449,37 @@ describe('isMediaPage', () => {
     expect(isMediaPage('myPage', { myPage: { type: 'media' } })).toBe(true);
   });
 
-  it('returns true for sonos type page', () => {
-    expect(isMediaPage('sonosPage', { sonosPage: { type: 'sonos' } })).toBe(true);
+  it('returns false for sonos type page', () => {
+    expect(isMediaPage('sonosPage', { sonosPage: { type: 'sonos' } })).toBe(false);
   });
 
   it('returns true for pageId starting with media', () => {
     expect(isMediaPage('media_room', {})).toBe(true);
   });
 
-  it('returns true for pageId starting with sonos', () => {
-    expect(isMediaPage('sonos_1', {})).toBe(true);
+  it('returns false for pageId starting with sonos', () => {
+    expect(isMediaPage('sonos_1', {})).toBe(false);
   });
 
   it('returns false for regular page', () => {
     expect(isMediaPage('home', { home: {} })).toBe(false);
+  });
+});
+
+describe('isSonosPage', () => {
+  it('returns false for null pageId', () => {
+    expect(isSonosPage(null, {})).toBe(false);
+  });
+
+  it('returns true for sonos type page', () => {
+    expect(isSonosPage('myPage', { myPage: { type: 'sonos' } })).toBe(true);
+  });
+
+  it('returns true for pageId starting with sonos', () => {
+    expect(isSonosPage('sonos_1', {})).toBe(true);
+  });
+
+  it('returns false for media type page', () => {
+    expect(isSonosPage('media_1', { media_1: { type: 'media' } })).toBe(false);
   });
 });

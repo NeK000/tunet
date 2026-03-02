@@ -4,6 +4,7 @@ import {
   isCardRemovable as _isCardRemovable,
   isCardHiddenByLogic as _isCardHiddenByLogic,
   isMediaPage as _isMediaPage,
+  isSonosPage as _isSonosPage,
 } from '../utils/cardUtils';
 
 /** @param {Record<string, unknown>} deps */
@@ -146,6 +147,7 @@ export function useDashboardStateCoordinator(deps) {
     _isCardRemovable(cardId, pageId, cardUtilCtx);
   const isCardHiddenByLogic = (cardId) => _isCardHiddenByLogic(cardId, cardUtilCtx);
   const isMediaPage = (pageId) => _isMediaPage(pageId, pageSettings);
+  const isSonosPage = (pageId) => _isSonosPage(pageId, pageSettings);
   const hasEnabledPopupTriggers = useMemo(
     () =>
       Object.values(cardSettings || {}).some(
@@ -164,6 +166,7 @@ export function useDashboardStateCoordinator(deps) {
     isCardRemovable,
     isCardHiddenByLogic,
     isMediaPage,
+    isSonosPage,
     hasEnabledPopupTriggers,
   };
 }

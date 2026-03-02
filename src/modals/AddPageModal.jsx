@@ -12,6 +12,7 @@ export default function AddPageModal({
   setNewPageIcon,
   onCreate,
   onCreateMedia,
+  onCreateSonos,
 }) {
   const [activeTab, setActiveTab] = useState('standard');
 
@@ -58,6 +59,13 @@ export default function AddPageModal({
             onClick={() => setActiveTab('media')}
             className={`flex-1 rounded-full border py-2.5 text-[11px] font-bold tracking-widest uppercase transition-all ${activeTab === 'media' ? 'border-[var(--accent-color)] bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'border-transparent bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
           >
+            {t('addCard.type.media')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('sonos')}
+            className={`flex-1 rounded-full border py-2.5 text-[11px] font-bold tracking-widest uppercase transition-all ${activeTab === 'sonos' ? 'border-[var(--accent-color)] bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'border-transparent bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+          >
             {t('addCard.type.sonos')}
           </button>
         </div>
@@ -99,6 +107,21 @@ export default function AddPageModal({
                 <Plus className="h-5 w-5" /> {t('page.create')}
               </button>
             </>
+          ) : activeTab === 'media' ? (
+            <>
+              <div className="popup-surface rounded-2xl p-4 text-sm text-[var(--text-secondary)]">
+                <p className="mb-2 text-[10px] font-bold tracking-widest text-gray-500 uppercase">
+                  {t('addCard.type.media')}
+                </p>
+                <p className="leading-relaxed">{t('media.chooseMedia')}</p>
+              </div>
+              <button
+                onClick={onCreateMedia}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--accent-color)] bg-[var(--accent-bg)] py-4 font-bold tracking-widest text-[var(--accent-color)] uppercase transition-colors hover:opacity-90"
+              >
+                <Plus className="h-5 w-5" /> {t('page.create')}
+              </button>
+            </>
           ) : (
             <>
               <div className="popup-surface rounded-2xl p-4 text-sm text-[var(--text-secondary)]">
@@ -108,7 +131,7 @@ export default function AddPageModal({
                 <p className="leading-relaxed">{t('sonos.createDescription')}</p>
               </div>
               <button
-                onClick={onCreateMedia}
+                onClick={onCreateSonos}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--accent-color)] bg-[var(--accent-bg)] py-4 font-bold tracking-widest text-[var(--accent-color)] uppercase transition-colors hover:opacity-90"
               >
                 <Plus className="h-5 w-5" /> {t('sonos.createPage')}

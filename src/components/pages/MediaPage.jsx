@@ -25,6 +25,51 @@ import {
 } from '../../icons';
 import { getMediaPlayerPowerAction } from '../../utils/mediaPlayerFeatures';
 
+const BLOCKED_MEDIA_TYPES = new Set([
+  'camera',
+  'image',
+  'video',
+  'tvshow',
+  'movie',
+  'channel',
+  'game',
+  'app',
+  'photo',
+  'picture',
+  'url',
+]);
+
+const BLOCKED_ID_PATTERNS = [
+  'camera.',
+  'camera/',
+  'image.',
+  'image/',
+  'media-source://camera',
+  'media-source://image',
+  'media-source://dlna',
+  'media-source://local',
+];
+
+const BLOCKED_TITLE_WORDS = [
+  'camera',
+  'kamera',
+  'webcam',
+  'surveillance',
+  'doorbell',
+  'security cam',
+  'cctv',
+];
+
+function isSonosMediaEntity(entity) {
+  if (!entity) return false;
+  const manufacturer = (entity.attributes?.manufacturer || '').toLowerCase();
+  const platform = (entity.attributes?.platform || '').toLowerCase();
+  if (manufacturer.includes('sonos') || platform.includes('sonos')) return true;
+  const entityId = (entity.entity_id || '').toLowerCase();
+  const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
+  return entityId.includes('sonos') || friendlyName.includes('sonos');
+}
+
 export default function MediaPage({
   pageId,
   entities,
@@ -39,31 +84,33 @@ export default function MediaPage({
   savePageSetting,
   formatDuration,
   t,
+  mode = 'media',
 }) {
   const [mediaSearch, setMediaSearch] = useState('');
   const [showPlayerSelector, setShowPlayerSelector] = useState(false);
   const [rightPanelView, setRightPanelView] = useState('players');
+  const [chooseTab, setChooseTab] = useState('favorites');
   const [chooseQuery, setChooseQuery] = useState('');
   const [favoritesByPlayer, setFavoritesByPlayer] = useState({});
   const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [browseChoicesByPlayer, setBrowseChoicesByPlayer] = useState({});
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState('');
+  const isSonosMode = mode === 'sonos';
   const pageSetting = pageSettings[pageId] || {};
-  const allMediaIds = Object.keys(entities).filter((id) => id.startsWith('media_player.'));
+  const allMediaIds = Object.keys(entities)
+    .filter((id) => id.startsWith('media_player.'))
+    .filter((id) => {
+      const entity = entities[id];
+      const sonos = isSonosMediaEntity(entity);
+      return isSonosMode ? sonos : !sonos;
+    });
   const showAll = !Array.isArray(pageSetting.mediaIds);
   const selectedIds = showAll ? allMediaIds : pageSetting.mediaIds;
   const visibleIds = selectedIds.length > 0 ? selectedIds : [];
   const mediaEntities = visibleIds.map((id) => entities[id]).filter(Boolean);
 
-  const isSonosEntity = (entity) => {
-    if (!entity) return false;
-    const manufacturer = (entity.attributes?.manufacturer || '').toLowerCase();
-    const platform = (entity.attributes?.platform || '').toLowerCase();
-    if (manufacturer.includes('sonos') || platform.includes('sonos')) return true;
-    const entityId = (entity.entity_id || '').toLowerCase();
-    const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
-    return entityId.includes('sonos') || friendlyName.includes('sonos');
-  };
-
-  const sonosEntities = mediaEntities.filter(isSonosEntity);
+  const sonosEntities = mediaEntities.filter(isSonosMediaEntity);
   const filteredMediaIds = allMediaIds.filter((id) => {
     if (!mediaSearch) return true;
     const lower = mediaSearch.toLowerCase();
@@ -137,6 +184,8 @@ export default function MediaPage({
         id: value,
         label: value,
         type: fallbackType,
+        source: '',
+        image: null,
       };
     }
     if (typeof item !== 'object') return null;
@@ -147,7 +196,15 @@ export default function MediaPage({
     const label = item.title || item.name || item.friendly_name || item.label || id;
     const type = item.media_content_type || item.type || fallbackType;
     const source = item.provider || item.source || item.app_name || item.domain || '';
-    return { id, label: String(label), type: String(type), source };
+    const image =
+      item.thumbnail ||
+      item.thumb ||
+      item.image ||
+      item.entity_picture ||
+      item.media_image ||
+      item.media_image_url ||
+      null;
+    return { id, label: String(label), type: String(type), source, image };
   }, []);
 
   const normalizeChoiceArray = useCallback(
@@ -176,22 +233,105 @@ export default function MediaPage({
     getA(mpId, 'sonos_playlists', []),
     'playlist'
   );
-  const favoriteChoices = favoritesByPlayer[mpId] || attrFavoriteChoices;
-  const loweredChooseQuery = chooseQuery.trim().toLowerCase();
-  const filteredChooseChoices = loweredChooseQuery
-    ? favoriteChoices.filter(
-        (choice) =>
-          choice.label.toLowerCase().includes(loweredChooseQuery) ||
-          choice.id.toLowerCase().includes(loweredChooseQuery)
-      )
-    : favoriteChoices;
+  const isMusicContent = useCallback((item) => {
+    const type = String(item?.media_content_type || '').toLowerCase();
+    const id = String(item?.media_content_id || '').toLowerCase();
+    const title = String(item?.title || '').toLowerCase();
 
-  const sonosAllIds = allMediaIds.filter((id) => isSonosEntity(entities[id]));
-  const manageablePlayerIds = sonosAllIds.slice().sort((a, b) => {
+    if (BLOCKED_MEDIA_TYPES.has(type)) return false;
+    if (BLOCKED_ID_PATTERNS.some((pattern) => id.includes(pattern))) return false;
+    if (BLOCKED_TITLE_WORDS.some((word) => title.includes(word))) return false;
+    return true;
+  }, []);
+
+  const flattenBrowseChoices = useCallback(
+    (nodes, path = '') => {
+      if (!Array.isArray(nodes) || nodes.length === 0) return [];
+      const items = [];
+      nodes.forEach((node) => {
+        if (!node || !isMusicContent(node)) return;
+
+        const title = String(node.title || node.media_content_id || '').trim();
+        const mediaContentId = String(node.media_content_id || '').trim();
+        const mediaContentType = String(node.media_content_type || 'music').trim();
+        const canPlay = Boolean(node.can_play);
+        const canExpand = Boolean(node.can_expand);
+        const children = Array.isArray(node.children) ? node.children : [];
+        const nextPath = path
+          ? `${path} / ${title || mediaContentType}`
+          : title || mediaContentType;
+
+        if (canPlay && mediaContentId) {
+          items.push({
+            id: mediaContentId,
+            label: title || mediaContentId,
+            type: mediaContentType || 'music',
+            source: path,
+            image: node.thumbnail || node.thumb || node.image || node.icon || null,
+          });
+        }
+
+        if (canExpand && children.length > 0) {
+          items.push(...flattenBrowseChoices(children, nextPath));
+        }
+      });
+      return items;
+    },
+    [isMusicContent]
+  );
+
+  const favoriteChoices = favoritesByPlayer[mpId] || attrFavoriteChoices;
+  const browseChoices = browseChoicesByPlayer[mpId] || { playlists: [], library: [] };
+  const playlistChoices = normalizeChoiceArray(
+    [...(browseChoices.playlists || []), ...playlistFallbackChoices],
+    'playlist'
+  );
+  const libraryChoices = browseChoices.library || [];
+  const combinedMusicChoices = normalizeChoiceArray(
+    [...favoriteChoices, ...playlistChoices, ...libraryChoices],
+    'music'
+  );
+  const loweredChooseQuery = chooseQuery.trim().toLowerCase();
+
+  const applyQueryFilter = useCallback(
+    (list) => {
+      if (!loweredChooseQuery) return list;
+      return list.filter(
+        (choice) =>
+          String(choice?.label || '')
+            .toLowerCase()
+            .includes(loweredChooseQuery) ||
+          String(choice?.id || '')
+            .toLowerCase()
+            .includes(loweredChooseQuery)
+      );
+    },
+    [loweredChooseQuery]
+  );
+
+  const filteredFavoriteChoices = applyQueryFilter(favoriteChoices);
+  const filteredPlaylistChoices = applyQueryFilter(playlistChoices);
+  const filteredLibraryChoices = applyQueryFilter(libraryChoices);
+  const filteredSearchChoices = applyQueryFilter(combinedMusicChoices);
+  const isChooseLoading =
+    chooseTab === 'favorites'
+      ? favoritesLoading
+      : chooseTab === 'search'
+        ? favoritesLoading || browseLoading
+        : browseLoading;
+
+  const sonosAllIds = allMediaIds.filter((id) => isSonosMediaEntity(entities[id]));
+  const manageablePlayerIds = (isSonosMode ? sonosAllIds : []).slice().sort((a, b) => {
     const aName = entities[a]?.attributes?.friendly_name || a;
     const bName = entities[b]?.attributes?.friendly_name || b;
     return aName.localeCompare(bName);
   });
+
+  useEffect(() => {
+    if (!isSonosMode && rightPanelView === 'manage') {
+      setRightPanelView('players');
+    }
+  }, [isSonosMode, rightPanelView]);
 
   const isPlayerAdded = (id) => (showAll ? allMediaIds.includes(id) : selectedIds.includes(id));
 
@@ -263,7 +403,8 @@ export default function MediaPage({
         }
 
         const allFavorites = [];
-        const browseFavDir = async (dir) => {
+        const browseFavDir = async (dir, depth = 0) => {
+          if (!dir || depth > 3) return;
           const resp = await conn.sendMessagePromise({
             type: 'media_player/browse_media',
             entity_id: mpId,
@@ -279,9 +420,10 @@ export default function MediaPage({
                 label: child.title || child.media_content_id,
                 type: child.media_content_type || 'music',
                 source: detail?.title || 'Favorites',
+                image: child.thumbnail || child.thumb || child.image || child.icon || null,
               });
             } else if (child?.can_expand) {
-              await browseFavDir(child);
+              await browseFavDir(child, depth + 1);
             }
           }
         };
@@ -327,14 +469,114 @@ export default function MediaPage({
     playlistFallbackChoices,
   ]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchBrowseChoices = async () => {
+      if (rightPanelView !== 'choose' || !mpId) return;
+      if (!conn || typeof conn.sendMessagePromise !== 'function') return;
+
+      const cached = browseChoicesByPlayer[mpId];
+      if (cached && cached._version === 2) return;
+
+      setBrowseLoading(true);
+      setBrowseError('');
+
+      try {
+        const rootResp = await conn.sendMessagePromise({
+          type: 'media_player/browse_media',
+          entity_id: mpId,
+        });
+        const root = rootResp?.result || rootResp || null;
+        const rootChildren = Array.isArray(root?.children) ? root.children : [];
+
+        const isPlaylistNode = (node) => {
+          const title = String(node?.title || '').toLowerCase();
+          const type = String(node?.media_content_type || node?.media_class || '').toLowerCase();
+          return (
+            title.includes('playlist') ||
+            title.includes('spilleliste') ||
+            title.includes('speleliste') ||
+            title.includes('spellista') ||
+            type.includes('playlist')
+          );
+        };
+
+        const playlists = [];
+        const library = [];
+
+        const musicBranches = rootChildren.filter(
+          (child) => child && typeof child === 'object' && isMusicContent(child)
+        );
+        library.push(...flattenBrowseChoices(musicBranches.filter((child) => child.can_play)));
+
+        const expandableBranches = musicBranches.filter((child) => child.can_expand).slice(0, 8);
+        for (const branch of expandableBranches) {
+          if (cancelled) break;
+          const sourceHint = branch?.title || '';
+          try {
+            const detailResp = await conn.sendMessagePromise({
+              type: 'media_player/browse_media',
+              entity_id: mpId,
+              media_content_type: branch.media_content_type,
+              media_content_id: branch.media_content_id,
+            });
+            const detail = detailResp?.result || detailResp || null;
+            const children = Array.isArray(detail?.children) ? detail.children : [];
+            const items = flattenBrowseChoices(children, sourceHint);
+            if (isPlaylistNode(branch)) playlists.push(...items);
+            else library.push(...items);
+          } catch {
+            // Skip failed branch and continue
+          }
+        }
+
+        const normalizedPlaylists = normalizeChoiceArray(playlists, 'playlist');
+        const normalizedLibrary = normalizeChoiceArray(library, 'music');
+
+        if (!cancelled) {
+          setBrowseChoicesByPlayer((prev) => ({
+            ...prev,
+            [mpId]: {
+              _version: 2,
+              playlists: normalizedPlaylists,
+              library: normalizedLibrary,
+            },
+          }));
+        }
+      } catch {
+        if (!cancelled) {
+          setBrowseError(t('media.choose.loadError'));
+        }
+      } finally {
+        if (!cancelled) setBrowseLoading(false);
+      }
+    };
+
+    fetchBrowseChoices();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    rightPanelView,
+    mpId,
+    conn,
+    browseChoicesByPlayer,
+    flattenBrowseChoices,
+    isMusicContent,
+    normalizeChoiceArray,
+    t,
+  ]);
+
   const listPlayers = mediaEntities.slice().sort((a, b) => {
-    const aActive = isSonosEntity(a) ? isSonosActive(a) : a?.state === 'playing';
-    const bActive = isSonosEntity(b) ? isSonosActive(b) : b?.state === 'playing';
+    const aActive = isSonosMediaEntity(a) ? isSonosActive(a) : a?.state === 'playing';
+    const bActive = isSonosMediaEntity(b) ? isSonosActive(b) : b?.state === 'playing';
     if (aActive !== bActive) return aActive ? -1 : 1;
     return (a.attributes?.friendly_name || '').localeCompare(b.attributes?.friendly_name || '');
   });
 
   const toggleGroupAll = () => {
+    if (!isSonosMode) return;
     const allIds = listPlayers.map((player) => player.entity_id);
     const otherIds = allIds.filter((id) => id !== mpId);
     if (hasGroupedOthers) {
@@ -345,6 +587,42 @@ export default function MediaPage({
       callService('media_player', 'join', { entity_id: mpId, group_members: otherIds });
     }
   };
+
+  const playChoice = (choice, fallbackType = 'music') => {
+    if (!choice?.id || !mpId) return;
+    callService('media_player', 'play_media', {
+      entity_id: mpId,
+      media_content_id: choice.id,
+      media_content_type: choice.type || fallbackType,
+    });
+  };
+
+  const renderChoiceTile = (choice, fallbackType = 'music') => (
+    <button
+      key={`${choice.type}::${choice.id}`}
+      type="button"
+      onClick={() => playChoice(choice, fallbackType)}
+      className="group flex flex-col items-center gap-2 rounded-xl p-2 transition-colors hover:bg-[var(--glass-bg-hover)]"
+    >
+      <div className="aspect-square w-full flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
+        {choice.image ? (
+          <img
+            src={choice.image}
+            alt={choice.label}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Heart className="h-6 w-6 text-[var(--text-secondary)] transition-colors group-hover:text-[var(--text-primary)]" />
+          </div>
+        )}
+      </div>
+      <p className="line-clamp-2 w-full text-center text-[10px] leading-tight font-bold tracking-wider text-[var(--text-primary)] uppercase">
+        {choice.label}
+      </p>
+    </button>
+  );
 
   return (
     <div key={pageId} className="fade-in-anim flex flex-col items-start gap-8 font-sans">
@@ -482,7 +760,7 @@ export default function MediaPage({
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2">
                 <Music className="h-4 w-4 text-[var(--text-primary)]" />
                 <span className="text-xs font-bold tracking-widest text-[var(--text-primary)] uppercase">
-                  {t('sonos.pageName')}
+                  {isSonosMode ? t('sonos.pageName') : t('addCard.type.media')}
                 </span>
               </div>
             </div>
@@ -726,24 +1004,26 @@ export default function MediaPage({
                   >
                     {t('media.tab.media')}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setRightPanelView('manage')}
-                    className={`rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase transition-colors ${rightPanelView === 'manage' ? 'border' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    style={
-                      rightPanelView === 'manage'
-                        ? {
-                            color: 'var(--text-primary)',
-                            backgroundColor: 'var(--glass-bg-hover)',
-                            borderColor: 'var(--glass-border)',
-                          }
-                        : undefined
-                    }
-                  >
-                    {t('media.tab.manage')}
-                  </button>
+                  {isSonosMode && (
+                    <button
+                      type="button"
+                      onClick={() => setRightPanelView('manage')}
+                      className={`rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase transition-colors ${rightPanelView === 'manage' ? 'border' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                      style={
+                        rightPanelView === 'manage'
+                          ? {
+                              color: 'var(--text-primary)',
+                              backgroundColor: 'var(--glass-bg-hover)',
+                              borderColor: 'var(--glass-border)',
+                            }
+                          : undefined
+                      }
+                    >
+                      {t('media.tab.manage')}
+                    </button>
+                  )}
                 </div>
-                {rightPanelView === 'players' && listPlayers.length > 1 && (
+                {isSonosMode && rightPanelView === 'players' && listPlayers.length > 1 && (
                   <button
                     onClick={toggleGroupAll}
                     className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-colors"
@@ -769,7 +1049,7 @@ export default function MediaPage({
                       const isSelected = p.entity_id === mpId;
                       const isMember = groupMembers.includes(p.entity_id);
                       const isSelf = p.entity_id === mpId;
-                      const isSonos = isSonosEntity(p);
+                      const isSonos = isSonosMediaEntity(p);
                       const isActivePlayer = isSonos ? isSonosActive(p) : p?.state === 'playing';
                       const pTitle = getA(p.entity_id, 'media_title', t('common.unknown'));
 
@@ -806,7 +1086,7 @@ export default function MediaPage({
                               </p>
                             </div>
                           </button>
-                          {!isSelf && listPlayers.length > 1 && (
+                          {isSonosMode && !isSelf && listPlayers.length > 1 && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -840,7 +1120,7 @@ export default function MediaPage({
                               )}
                             </button>
                           )}
-                          {isSelf && listPlayers.length > 1 && (
+                          {isSonosMode && isSelf && listPlayers.length > 1 && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -865,6 +1145,33 @@ export default function MediaPage({
               )}
               {rightPanelView === 'choose' && (
                 <div className="custom-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto">
+                  <div className="popup-surface inline-flex items-center gap-1 rounded-xl border border-[var(--glass-border)] p-1">
+                    {[
+                      ['favorites', t('media.choose.tab.favorites')],
+                      ['playlists', t('media.choose.tab.playlists')],
+                      ['library', t('media.choose.tab.library')],
+                      ['search', t('media.choose.tab.search')],
+                    ].map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setChooseTab(tab)}
+                        className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold tracking-wider uppercase transition-colors ${chooseTab === tab ? 'border' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                        style={
+                          chooseTab === tab
+                            ? {
+                                color: 'var(--text-primary)',
+                                backgroundColor: 'var(--glass-bg-hover)',
+                                borderColor: 'var(--glass-border)',
+                              }
+                            : undefined
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
                   <input
                     type="text"
                     value={chooseQuery}
@@ -872,48 +1179,81 @@ export default function MediaPage({
                     placeholder={t('media.choose.tab.search')}
                     className="w-full rounded-xl bg-[var(--glass-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                   />
+
                   <div className="space-y-2">
-                    {favoritesLoading && (
+                    {isChooseLoading && (
                       <div className="py-2 text-center text-xs text-[var(--text-muted)] italic">
                         {t('media.choose.loading')}
                       </div>
                     )}
-                    {!favoritesLoading && filteredChooseChoices.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2">
-                        {filteredChooseChoices.map((choice) => (
-                          <button
-                            key={`${choice.type}::${choice.id}`}
-                            type="button"
-                            onClick={() => {
-                              callService('media_player', 'play_media', {
-                                entity_id: mpId,
-                                media_content_id: choice.id,
-                                media_content_type: choice.type || 'music',
-                              });
-                            }}
-                            className="group flex flex-col items-center gap-2 rounded-xl p-2 transition-colors hover:bg-[var(--glass-bg-hover)]"
-                          >
-                            <div className="aspect-square w-full flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Heart className="h-6 w-6 text-[var(--text-secondary)] transition-colors group-hover:text-[var(--text-primary)]" />
-                              </div>
-                            </div>
-                            <p className="line-clamp-2 w-full text-center text-[10px] leading-tight font-bold tracking-wider text-[var(--text-primary)] uppercase">
-                              {choice.label}
-                            </p>
-                          </button>
-                        ))}
-                      </div>
+
+                    {!isChooseLoading && chooseTab === 'favorites' && (
+                      <>
+                        {filteredFavoriteChoices.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {filteredFavoriteChoices.map((choice) =>
+                              renderChoiceTile(choice, 'music')
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-2 text-center text-xs text-[var(--text-muted)] italic">
+                            {t('media.choose.emptyFavorites')}
+                          </div>
+                        )}
+                      </>
                     )}
-                    {!favoritesLoading && filteredChooseChoices.length === 0 && (
-                      <div className="py-2 text-center text-xs text-[var(--text-muted)] italic">
-                        {t('media.choose.emptyFavorites')}
-                      </div>
+
+                    {!isChooseLoading && chooseTab === 'playlists' && (
+                      <>
+                        {filteredPlaylistChoices.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {filteredPlaylistChoices.map((choice) =>
+                              renderChoiceTile(choice, 'playlist')
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-2 text-center text-xs text-[var(--text-muted)] italic">
+                            {t('media.choose.emptyPlaylists')}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {!isChooseLoading && chooseTab === 'library' && (
+                      <>
+                        {filteredLibraryChoices.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {filteredLibraryChoices.map((choice) =>
+                              renderChoiceTile(choice, 'music')
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-2 text-center text-xs text-[var(--text-muted)] italic">
+                            {browseError || t('media.choose.emptyResults')}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {!isChooseLoading && chooseTab === 'search' && (
+                      <>
+                        {filteredSearchChoices.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {filteredSearchChoices.map((choice) =>
+                              renderChoiceTile(choice, 'music')
+                            )}
+                          </div>
+                        ) : (
+                          <div className="py-2 text-center text-xs text-[var(--text-muted)] italic">
+                            {t('form.noResults')}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
               )}
-              {rightPanelView === 'manage' && (
+              {isSonosMode && rightPanelView === 'manage' && (
                 <div className="custom-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto">
                   <div className="space-y-2">
                     {manageablePlayerIds.map((id) => {

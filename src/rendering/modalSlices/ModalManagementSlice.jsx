@@ -52,6 +52,7 @@ export function ModalManagementSlice({
     setNewPageIcon,
     createPage,
     createMediaPage,
+    createSonosPage,
     deletePage,
     pageSettings,
     savePageSetting,
@@ -201,6 +202,7 @@ export function ModalManagementSlice({
             setNewPageIcon={setNewPageIcon}
             onCreate={createPage}
             onCreateMedia={createMediaPage}
+            onCreateSonos={createSonosPage}
           />
         </ModalSuspense>
       )}

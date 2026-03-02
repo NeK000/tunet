@@ -26,7 +26,8 @@ export function useEditModalProps({
       !!editId &&
       (editId.startsWith('media_player.') ||
         editId === 'media_player' ||
-        editId.startsWith('media_group_'));
+        editId.startsWith('media_group_') ||
+        editId.startsWith('sonos_group_'));
     const isEditCalendar = !!editId && editId.startsWith('calendar_card_');
     const isEditTodo = !!editId && editId.startsWith('todo_card_');
     const isEditCost = !!editId && editId.startsWith('cost_card_');

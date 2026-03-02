@@ -1,10 +1,10 @@
 import { LayoutGrid, Plus, UserCircle2 } from '../icons';
-import { MediaPage } from '../components';
+import { MediaPage, SonosPage } from '../components';
 import CardErrorBoundary from '../components/ui/CardErrorBoundary';
 import { formatDuration } from '../utils';
 
 export default function DashboardGrid({ page, media, grid, cards, actions, t }) {
-  const { activePage, pagesConfig, pageSettings, editMode, isMediaPage } = page;
+  const { activePage, pagesConfig, pageSettings, editMode, isMediaPage, isSonosPage } = page;
   const {
     entities,
     conn,
@@ -24,6 +24,30 @@ export default function DashboardGrid({ page, media, grid, cards, actions, t }) 
     return (
       <div key={activePage} className="page-transition">
         <MediaPage
+          pageId={activePage}
+          entities={entities}
+          conn={conn}
+          pageSettings={pageSettings}
+          editMode={editMode}
+          isSonosActive={isSonosActive}
+          activeMediaId={activeMediaId}
+          setActiveMediaId={setActiveMediaId}
+          getA={getA}
+          getEntityImageUrl={getEntityImageUrl}
+          callService={callService}
+          savePageSetting={savePageSetting}
+          formatDuration={formatDuration}
+          t={t}
+          mode="media"
+        />
+      </div>
+    );
+  }
+
+  if (isSonosPage(activePage)) {
+    return (
+      <div key={activePage} className="page-transition">
+        <SonosPage
           pageId={activePage}
           entities={entities}
           conn={conn}

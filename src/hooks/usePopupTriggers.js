@@ -165,9 +165,9 @@ function openPopupForCard(cardId, settings, modalActions, entities) {
     return true;
   }
 
-  if (cardId.startsWith('media_group_')) {
-    const entityIds = Array.isArray(settings?.entityIds)
-      ? settings.entityIds.filter((id) => typeof id === 'string')
+  if (cardId.startsWith('media_group_') || cardId.startsWith('sonos_group_')) {
+    const entityIds = Array.isArray(settings?.mediaIds)
+      ? settings.mediaIds.filter((id) => typeof id === 'string')
       : [];
     const firstEntityId = entityIds[0] || null;
     closeAndOpen(() => {

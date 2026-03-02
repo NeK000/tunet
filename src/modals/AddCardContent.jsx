@@ -14,6 +14,7 @@ import {
   ListChecks,
   Minus,
   Music,
+  Speaker,
   Plus,
   Search,
   Shield,
@@ -290,6 +291,16 @@ function AddCardContent({
   };
   const betaSuffix = ` (${getLabel('addCard.betaLabel', 'beta')})`;
 
+  const isSonosEntity = (entity) => {
+    if (!entity) return false;
+    const manufacturer = (entity.attributes?.manufacturer || '').toLowerCase();
+    const platform = (entity.attributes?.platform || '').toLowerCase();
+    if (manufacturer.includes('sonos') || platform.includes('sonos')) return true;
+    const entityId = (entity.entity_id || '').toLowerCase();
+    const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
+    return entityId.includes('sonos') || friendlyName.includes('sonos');
+  };
+
   /** Reusable entity list item button. */
   const EntityItem = ({ id, isSelected, onClick, badgeText, displayName }) => (
     <button
@@ -359,6 +370,7 @@ function AddCardContent({
         return id.startsWith('media_player.') || id.startsWith('remote.');
       if (addCardType === 'cost') return id.startsWith('sensor.') || id.startsWith('input_number.');
       if (addCardType === 'media') return id.startsWith('media_player.');
+      if (addCardType === 'sonos') return id.startsWith('media_player.') && isSonosEntity(entities[id]);
       if (addCardType === 'sensor') {
         return (
           (id.startsWith('sensor.') ||
@@ -873,6 +885,7 @@ function AddCardContent({
     'cover',
     'alarm',
     'media',
+    'sonos',
     'toggle',
     'entity',
   ].includes(addCardType);
@@ -1008,6 +1021,13 @@ function AddCardContent({
                   onSelect={setAddCardType}
                 />
                 <TypeButton
+                  type="sonos"
+                  icon={Speaker}
+                  label={t('addCard.type.sonos')}
+                  isActive={addCardType === 'sonos'}
+                  onSelect={setAddCardType}
+                />
+                <TypeButton
                   type="weather"
                   icon={CloudSun}
                   label={t('addCard.type.weather')}
@@ -1102,6 +1122,8 @@ function AddCardContent({
               <Plus className="h-5 w-5" />{' '}
               {addCardType === 'media'
                 ? `${t('addCard.add')} ${selectedEntities.length} ${t('addCard.players')}`
+                : addCardType === 'sonos'
+                  ? `${t('addCard.add')} ${selectedEntities.length} ${t('addCard.players')}`
                 : addCardType === 'calendar'
                   ? `${t('addCard.add')} ${t('addCard.type.calendar') || 'Calendar'} ${t('addCard.cards')}`
                   : addCardType === 'camera'

@@ -69,8 +69,8 @@ export function usePageManagement({
   };
 
   // ── Create a media/Sonos page ──────────────────────────────────────────
-  const createMediaPage = () => {
-    const baseLabel = t('sonos.pageName');
+  const createTypedPage = ({ labelKey, fallbackLabel, defaultIcon, defaultType, defaultSlug }) => {
+    const baseLabel = t(labelKey) || fallbackLabel;
     const existingLabels = (pagesConfig.pages || []).map(
       (id) => pageSettings[id]?.label || pageDefaults[id]?.label || id
     );
@@ -89,7 +89,7 @@ export function usePageManagement({
       baseLabel
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '') || 'media';
+        .replace(/^_+|_+$/g, '') || defaultSlug;
     let pageId = slugBase;
     const existing = new Set(pagesConfig.pages || []);
     let counter = 1;
@@ -104,13 +104,31 @@ export function usePageManagement({
     persistConfig(newConfig);
 
     savePageSetting(pageId, 'label', label);
-    savePageSetting(pageId, 'icon', 'Speaker');
-    savePageSetting(pageId, 'type', 'media');
+    savePageSetting(pageId, 'icon', defaultIcon);
+    savePageSetting(pageId, 'type', defaultType);
     savePageSetting(pageId, 'mediaIds', []);
 
     setActivePage(pageId);
     setShowAddPageModal(false);
   };
+
+  const createMediaPage = () =>
+    createTypedPage({
+      labelKey: 'addCard.type.media',
+      fallbackLabel: 'Media',
+      defaultIcon: 'Music',
+      defaultType: 'media',
+      defaultSlug: 'media',
+    });
+
+  const createSonosPage = () =>
+    createTypedPage({
+      labelKey: 'addCard.type.sonos',
+      fallbackLabel: 'SONOS',
+      defaultIcon: 'Speaker',
+      defaultType: 'sonos',
+      defaultSlug: 'sonos',
+    });
 
   // ── Delete a page ──────────────────────────────────────────────────────
   const deletePage = (pageId) => {
@@ -153,6 +171,7 @@ export function usePageManagement({
     setEditingPage,
     createPage,
     createMediaPage,
+    createSonosPage,
     deletePage,
     removeCard,
   };

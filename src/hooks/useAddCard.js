@@ -13,7 +13,8 @@ import { handleAddSelected } from '../services';
 export function useAddCard({
   showAddCardModal,
   activePage,
-  isMediaPage,
+  isMediaPage = () => false,
+  isSonosPage = () => false,
   pagesConfig,
   persistConfig,
   cardSettings,
@@ -75,7 +76,7 @@ export function useAddCard({
   // ── Infer card type from target page ───────────────────────────────────
   useEffect(() => {
     if (!showAddCardModal) return;
-    if (isMediaPage(addCardTargetPage)) {
+    if (isMediaPage(addCardTargetPage) || isSonosPage(addCardTargetPage)) {
       setAddCardType('entity');
       return;
     }
@@ -113,6 +114,7 @@ export function useAddCard({
     if (addCardType === 'alarm') return t('addCard.available.alarms');
     if (addCardType === 'cost') return t('addCard.available.costs');
     if (addCardType === 'media') return t('addCard.available.players');
+    if (addCardType === 'sonos') return t('addCard.available.sonos');
     if (addCardType === 'car') return t('addCard.available.cars');
     if (addCardType === 'toggle') return t('addCard.available.toggles');
     if (addCardType === 'sensor') return t('addCard.available.sensors');
@@ -142,6 +144,8 @@ export function useAddCard({
                         ? 'addCard.item.costs'
                         : addCardType === 'media'
                           ? 'addCard.item.players'
+                          : addCardType === 'sonos'
+                            ? 'addCard.item.players'
                           : addCardType === 'car'
                             ? 'addCard.item.cars'
                             : addCardType === 'toggle'

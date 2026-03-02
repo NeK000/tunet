@@ -56,6 +56,8 @@ export const handleAddSelected = (ctx) => {
         return selectedEntities.filter((id) => id.startsWith('cover.'));
       case 'media':
         return selectedEntities.filter((id) => id.startsWith('media_player.'));
+      case 'sonos':
+        return selectedEntities.filter((id) => id.startsWith('media_player.'));
       case 'alarm':
         return selectedEntities.filter((id) => id.startsWith('alarm_control_panel.'));
       default:
@@ -128,6 +130,15 @@ export const handleAddSelected = (ctx) => {
       const mediaEntities = selectedEntitiesForType();
       if (mediaEntities.length === 0) return;
       const cardId = `media_group_${Date.now()}`;
+      commitSingleCard(cardId, { mediaIds: mediaEntities });
+      setSelectedEntities([]);
+      return;
+    }
+
+    case 'sonos': {
+      const mediaEntities = selectedEntitiesForType();
+      if (mediaEntities.length === 0) return;
+      const cardId = `sonos_group_${Date.now()}`;
       commitSingleCard(cardId, { mediaIds: mediaEntities });
       setSelectedEntities([]);
       return;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   X,
   Music,
@@ -19,6 +19,8 @@ import {
   Plus,
   Minus,
   Heart,
+  ChevronLeft,
+  ChevronRight,
 } from '../icons';
 import M3Slider from '../components/ui/M3Slider';
 import { getMediaPlayerPowerAction } from '../utils/mediaPlayerFeatures';
@@ -85,6 +87,8 @@ const BLOCKED_TITLE_WORDS = [
   'cctv',
 ];
 
+const MEDIA_VIEW_MODE_KEY = 'tunet_media_view_mode_by_modal';
+
 /**
  * MediaModal - Unified media/sonos modal
  *
@@ -103,6 +107,7 @@ const BLOCKED_TITLE_WORDS = [
  * @param {number} props.mediaTick - Tick for media position updates
  * @param {Function} props.callService - HA service call
  * @param {Function} props.getA - Get entity attribute
+ * @param {Function} props.getEntityImageUrl - Resolve entity/media image URL
  * @param {Function} props.isMediaActive - Is media active
  * @param {Function} props.isSonosActive - Is Sonos active
  * @param {Function} props.t - Translation function
@@ -125,6 +130,7 @@ export default function MediaModal({
   mediaTick,
   callService,
   getA,
+  getEntityImageUrl,
   isMediaActive,
   isSonosActive,
   t,
@@ -147,6 +153,11 @@ export default function MediaModal({
   const [favoritesByPlayer, setFavoritesByPlayer] = useState({});
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [showAddSonosPicker, setShowAddSonosPicker] = useState(false);
+  const [showPlayersSidebar, setShowPlayersSidebar] = useState(true);
+  const [viewModeByModal, setViewModeByModal] = useState(() =>
+    readJSON(MEDIA_VIEW_MODE_KEY, {})
+  );
+  const wasOpenRef = useRef(false);
   const [playerNameDisplayFilter, setPlayerNameDisplayFilter] = useState(() =>
     readText('tunet_media_name_display_filter', '')
   );
@@ -326,6 +337,47 @@ export default function MediaModal({
     setPlayerNameDisplayFilter(readText('tunet_media_name_display_filter', ''));
   }, [show]);
 
+  const getViewModeScope = useCallback(() => {
+    const modalType = activeMediaModal === 'sonos' ? 'sonos' : 'media';
+    const cardScope = activeMediaGroupKey || activeMediaId || 'default';
+    return `${modalType}::${cardScope}`;
+  }, [activeMediaModal, activeMediaGroupKey, activeMediaId]);
+
+  const persistViewModeForScope = useCallback(
+    (value) => {
+      const isSidebarVisible = Boolean(value);
+      const scope = getViewModeScope();
+      setViewModeByModal((prev) => {
+        const next = { ...(prev || {}), [scope]: isSidebarVisible };
+        writeJSON(MEDIA_VIEW_MODE_KEY, next);
+        return next;
+      });
+    },
+    [getViewModeScope]
+  );
+
+  const handleModalClose = useCallback(() => {
+    persistViewModeForScope(showPlayersSidebar);
+    onClose();
+  }, [onClose, persistViewModeForScope, showPlayersSidebar]);
+
+  useEffect(() => {
+    if (!show) return;
+    const scope = getViewModeScope();
+    const saved = viewModeByModal?.[scope];
+    setShowPlayersSidebar(typeof saved === 'boolean' ? saved : true);
+  }, [show, getViewModeScope, viewModeByModal]);
+
+  useEffect(() => {
+    if (show) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    persistViewModeForScope(showPlayersSidebar);
+    wasOpenRef.current = false;
+  }, [show, persistViewModeForScope, showPlayersSidebar]);
+
   const applyPlayerNameDisplayFilter = useCallback(
     (value) => {
       const name = String(value || '');
@@ -481,6 +533,38 @@ export default function MediaModal({
   const contentType = mpId ? getA(mpId, 'media_content_type') : null;
   const isChannel = contentType === 'channel';
   const isPlaying = mpState === 'playing';
+  const getArtworkUrl = useCallback(
+    (entity) => {
+      const raw =
+        entity?.attributes?.entity_picture ||
+        entity?.attributes?.media_image_url ||
+        entity?.attributes?.media_image ||
+        null;
+      if (!raw) return null;
+      if (typeof getEntityImageUrl === 'function') {
+        return getEntityImageUrl(raw);
+      }
+      if (typeof raw === 'string' && (raw.startsWith('http://') || raw.startsWith('https://'))) {
+        return raw;
+      }
+      return null;
+    },
+    [getEntityImageUrl]
+  );
+  const sanitizeImageSrc = useCallback((value) => {
+    if (typeof value !== 'string') return null;
+    const src = value.trim();
+    if (!src) return null;
+    try {
+      const parsed = new URL(src, window.location.origin);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  }, []);
+  const currentArtworkUrl = getArtworkUrl(currentMp);
+  const safeCurrentArtworkUrl = sanitizeImageSrc(currentArtworkUrl);
   const powerAction = getMediaPlayerPowerAction(currentMp);
   const canTogglePower = Boolean(powerAction);
   const isPowerOffAction = powerAction === 'turn_off';
@@ -829,6 +913,11 @@ export default function MediaModal({
   };
 
   const renderChoiceButton = (choice, keyPrefix = '') => {
+    const choiceImage =
+      choice?.image && typeof getEntityImageUrl === 'function'
+        ? getEntityImageUrl(choice.image)
+        : choice?.image || null;
+    const safeChoiceImage = sanitizeImageSrc(choiceImage);
     return (
       <button
         key={`${keyPrefix}${choice.type}::${choice.id}`}
@@ -838,9 +927,13 @@ export default function MediaModal({
       >
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
-            <div className="flex h-full w-full items-center justify-center">
-              <Music className="h-4 w-4 text-[var(--text-secondary)]" />
-            </div>
+            {safeChoiceImage ? (
+              <img src={safeChoiceImage} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Music className="h-4 w-4 text-[var(--text-secondary)]" />
+              </div>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
@@ -879,7 +972,7 @@ export default function MediaModal({
       <div
         className="fixed inset-0 z-[100] flex items-center justify-center p-4 font-sans md:p-6"
         style={{ backdropFilter: 'blur(20px)', backgroundColor: 'rgba(0,0,0,0.3)' }}
-        onClick={onClose}
+        onClick={handleModalClose}
       >
         <div
           className="popup-anim relative w-full max-w-2xl rounded-3xl border p-6 shadow-2xl backdrop-blur-xl md:rounded-[4rem] md:p-12"
@@ -890,7 +983,7 @@ export default function MediaModal({
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={onClose}
+            onClick={handleModalClose}
             className="modal-close absolute top-6 right-6 z-20 md:top-10 md:right-10"
           >
             <X className="h-4 w-4" />
@@ -903,41 +996,43 @@ export default function MediaModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 font-sans md:p-6"
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-2 font-sans md:items-center md:p-6"
       style={{ backdropFilter: 'blur(20px)', backgroundColor: 'rgba(0,0,0,0.3)' }}
-      onClick={onClose}
+      onClick={handleModalClose}
     >
       <div
-        className="popup-anim relative flex max-h-[95vh] w-full max-w-5xl flex-col gap-6 overflow-y-auto rounded-3xl border p-6 shadow-2xl backdrop-blur-xl md:flex-row md:gap-12 md:overflow-hidden md:rounded-[4rem] md:p-12"
+        className={`popup-anim relative flex w-full flex-col overflow-hidden shadow-2xl backdrop-blur-xl md:flex-row ${showPlayersSidebar ? 'max-w-5xl gap-4 rounded-3xl border p-4 md:gap-10 md:rounded-[4rem] md:p-10' : 'max-w-[95vw] rounded-3xl border-0 p-0 md:rounded-[3rem]'}`}
         style={{
-          background: 'linear-gradient(135deg, var(--card-bg) 0%, var(--modal-bg) 100%)',
+          background: showPlayersSidebar ? 'linear-gradient(135deg, var(--card-bg) 0%, var(--modal-bg) 100%)' : 'black',
           borderColor: 'var(--glass-border)',
+          height: showPlayersSidebar ? 'min(80dvh, 800px)' : 'min(90dvh, 1200px)',
+          maxHeight: 'calc(100dvh - 2rem)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <button
-          onClick={onClose}
-          className="modal-close absolute top-6 right-6 z-20 md:top-10 md:right-10"
+          onClick={handleModalClose}
+          className={`modal-close absolute z-50 ${showPlayersSidebar ? 'top-6 right-6 md:top-10 md:right-10' : 'top-4 right-4'}`}
         >
-          <X className="h-4 w-4" />
+          <X className="h-6 w-6 text-white drop-shadow-md" />
         </button>
 
-        <div className="relative z-10 flex flex-1 flex-col justify-center">
-          <div className="mb-6 flex items-center gap-4">
+        <div className={`custom-scrollbar relative z-10 flex min-h-0 flex-col justify-start ${showPlayersSidebar ? 'flex-1 pr-1 md:pr-2 overflow-hidden' : 'h-full w-full overflow-hidden'}`}>
+          <div className={`flex items-center gap-3 md:gap-4 flex-shrink-0 ${showPlayersSidebar ? 'mb-2 md:mb-4' : 'absolute top-4 left-4 z-50'}`}>
             <div
-              className="rounded-2xl p-4 transition-all duration-500"
-              style={{ backgroundColor: 'var(--glass-bg)', color: 'var(--text-secondary)' }}
+              className="rounded-2xl p-3 transition-all duration-500 md:p-4"
+              style={{ backgroundColor: showPlayersSidebar ? 'var(--glass-bg)' : 'rgba(255,255,255,0.1)', color: showPlayersSidebar ? 'var(--text-secondary)' : 'white' }}
             >
               {isChannel ? (
-                <Tv className="h-8 w-8" />
+                <Tv className="h-6 w-6 md:h-8 md:w-8" />
               ) : isCurrentSonos ? (
-                <Speaker className="h-8 w-8" />
+                <Speaker className="h-6 w-6 md:h-8 md:w-8" />
               ) : (
-                <Music className="h-8 w-8" />
+                <Music className="h-6 w-6 md:h-8 md:w-8" />
               )}
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-2xl leading-none font-light tracking-tight text-[var(--text-primary)] uppercase italic">
+              <h3 className={`max-w-full truncate pr-10 text-lg leading-tight font-light tracking-tight uppercase italic md:pr-0 md:text-2xl md:leading-none ${showPlayersSidebar ? 'text-[var(--text-primary)]' : 'text-white drop-shadow-md'}`}>
                 {activeUser
                   ? `${activeUser} - ${applyPlayerNameDisplayFilter(currentMp.attributes?.friendly_name || mpId)}`
                   : applyPlayerNameDisplayFilter(currentMp.attributes?.friendly_name || mpId)}
@@ -945,74 +1040,109 @@ export default function MediaModal({
               <div
                 className="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1"
                 style={{
-                  backgroundColor: 'var(--glass-bg)',
-                  borderColor: 'var(--glass-border)',
-                  color: 'var(--text-secondary)',
+                  backgroundColor: showPlayersSidebar ? 'var(--glass-bg)' : 'rgba(0,0,0,0.3)',
+                  borderColor: showPlayersSidebar ? 'var(--glass-border)' : 'rgba(255,255,255,0.1)',
+                  color: showPlayersSidebar ? 'var(--text-secondary)' : 'rgba(255,255,255,0.7)',
                 }}
               >
                 <div
                   className={`h-1.5 w-1.5 rounded-full ${mpState === 'playing' ? 'bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.5)]' : mpState === 'paused' ? 'bg-amber-400' : 'bg-slate-600'}`}
                 />
-                <span className="text-[10px] font-bold tracking-widest uppercase italic">
+                <span className="text-[10px] font-bold tracking-widest uppercase italic hidden sm:inline">
                   {isCurrentSonos ? t('media.sonosLabel') : popupHeading || mpState}
                 </span>
               </div>
             </div>
           </div>
-          <div className="mb-6 flex flex-col gap-2">
+          <div className={`flex flex-col gap-2 flex-shrink-0 ${showPlayersSidebar ? 'mb-2 md:mb-4' : 'absolute top-4 right-16 z-50'}`}>
             <div className="flex flex-wrap items-center gap-2">
+              {showPlayersSidebar && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowChoosePanel(true)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--glass-bg-hover)]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="text-xs font-bold tracking-wider uppercase">
+                      {t('media.chooseMedia')}
+                    </span>
+                  </button>
+                  {lastChoice?.id && (
+                    <button
+                      type="button"
+                      onClick={() => playChoice(lastChoice)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2 transition-colors hover:bg-[var(--glass-bg-hover)]"
+                    >
+                      <Music className="h-4 w-4 text-[var(--text-secondary)]" />
+                      <span className="max-w-[220px] truncate text-[11px] font-semibold text-[var(--text-secondary)]">
+                        {t('media.choose.lastChoice')}: {lastChoice.label}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
               <button
                 type="button"
-                onClick={() => setShowChoosePanel(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--glass-bg-hover)]"
+                onClick={() => setShowPlayersSidebar((prev) => !prev)}
+                className={`ml-auto rounded-xl border transition-colors hover:scale-105 active:scale-95 ${
+                  showPlayersSidebar
+                    ? 'border-[var(--glass-border)] bg-[var(--glass-bg)] p-2 text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'
+                    : 'rounded-full border-transparent bg-white/10 p-2 text-white hover:bg-white/20'
+                }`}
+                aria-label={showPlayersSidebar ? t('common.hide') || 'Hide' : t('common.show') || 'Show'}
+                title={showPlayersSidebar ? t('common.hide') || 'Hide' : t('common.show') || 'Show'}
               >
-                <Plus className="h-4 w-4" />
-                <span className="text-xs font-bold tracking-wider uppercase">
-                  {t('media.chooseMedia')}
-                </span>
+                {showPlayersSidebar ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronLeft className="h-5 w-5" />
+                )}
               </button>
-              {lastChoice?.id && (
-                <button
-                  type="button"
-                  onClick={() => playChoice(lastChoice)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2 transition-colors hover:bg-[var(--glass-bg-hover)]"
-                >
-                  <Music className="h-4 w-4 text-[var(--text-secondary)]" />
-                  <span className="max-w-[220px] truncate text-[11px] font-semibold text-[var(--text-secondary)]">
-                    {t('media.choose.lastChoice')}: {lastChoice.label}
-                  </span>
-                </button>
-              )}
             </div>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <div className="group relative aspect-[16/9] w-full overflow-hidden rounded-3xl border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-2xl">
-              <div className="flex h-full w-full items-center justify-center">
-                {isChannel ? (
-                  <Tv className="h-20 w-20 text-gray-700" />
-                ) : isSonos ? (
-                  <Speaker className="h-20 w-20 text-gray-700" />
-                ) : (
-                  <Music className="h-20 w-20 text-gray-700" />
-                )}
-              </div>
+          <div
+            className={`flex flex-1 min-h-0 flex-col justify-evenly gap-2 md:gap-4 ${showPlayersSidebar ? '' : 'hidden'}`}
+          >
+            <div
+              className={`group relative overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-2xl md:rounded-3xl flex-shrink ${showPlayersSidebar ? 'w-full aspect-square max-h-[40vh] mx-auto object-contain' : 'h-44 w-full sm:h-52 md:h-auto md:w-[clamp(14rem,30vw,20rem)] md:flex-shrink-0 md:aspect-square'}`}
+            >
+              {safeCurrentArtworkUrl ? (
+                <img
+                  src={safeCurrentArtworkUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  {isChannel ? (
+                    <Tv className="h-14 w-14 text-gray-700 md:h-20 md:w-20" />
+                  ) : isSonos ? (
+                    <Speaker className="h-14 w-14 text-gray-700 md:h-20 md:w-20" />
+                  ) : (
+                    <Music className="h-14 w-14 text-gray-700 md:h-20 md:w-20" />
+                  )}
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-              <div className="absolute bottom-0 left-0 w-full p-8">
-                <p className="mb-2 text-sm font-bold tracking-widest text-[var(--accent-color)] uppercase">
+              <div className="absolute bottom-0 left-0 w-full p-4 md:p-8">
+                <p className="mb-1 text-[11px] font-bold tracking-widest text-[var(--accent-color)] uppercase md:mb-2 md:text-sm">
                   {activeUser
                     ? `${activeUser} - ${applyPlayerNameDisplayFilter(currentMp.attributes?.friendly_name || mpId)}`
                     : applyPlayerNameDisplayFilter(currentMp.attributes?.friendly_name || mpId)}
                 </p>
-                <h2 className="mb-2 line-clamp-2 text-2xl leading-tight font-bold text-white md:text-4xl">
+                <h2 className="mb-1 line-clamp-2 text-lg leading-tight font-bold text-white md:mb-2 md:text-3xl">
                   {mpTitle || t('common.unknown')}
                 </h2>
-                <p className="text-xl font-medium text-gray-300">{mpSeries}</p>
+                <p className="line-clamp-1 text-sm font-medium text-gray-300 md:text-xl">
+                  {mpSeries}
+                </p>
               </div>
             </div>
 
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between px-1 text-xs font-bold tracking-widest text-gray-500">
+            <div className={`flex flex-col gap-2 flex-shrink-0 ${showPlayersSidebar ? 'mt-2 space-y-2' : 'mt-4 space-y-4 md:mt-0 md:flex-1'}`}>
+              <div className="flex flex-shrink-0 items-center justify-between px-1 text-xs font-bold tracking-widest text-gray-500">
                 <span>{formatDuration(effectivePosition)}</span>
                 <span>{formatDuration(duration)}</span>
               </div>
@@ -1272,9 +1402,173 @@ export default function MediaModal({
               )}
             </div>
           </div>
+
+          {!showPlayersSidebar && (
+            <div className="flex h-full w-full flex-col justify-end pb-12">
+              {/* Background Artwork - Full Screen */}
+              <div className="absolute inset-0 z-0">
+                {safeCurrentArtworkUrl ? (
+                  <>
+                    <img
+                      src={safeCurrentArtworkUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/30" />
+                  </>
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gray-900">
+                    <Music className="h-32 w-32 text-gray-700" />
+                  </div>
+                )}
+              </div>
+
+              {/* Main Content Overlay - Bottom Aligned Controls */}
+              <div className="relative z-10 flex flex-col items-center gap-6 px-8 md:px-16 w-full max-w-5xl mx-auto">
+                
+                {/* Intro / Metadata */}
+                <div className="text-center w-full">
+                  <h2 className="text-3xl font-bold text-white md:text-5xl drop-shadow-lg mb-2 line-clamp-2">
+                    {mpTitle || t('common.unknown')}
+                  </h2>
+                  <p className="text-xl font-medium text-white/80 md:text-2xl drop-shadow-md line-clamp-1">
+                    {mpSeries || mpArtist}
+                  </p>
+                </div>
+
+                {/* Progress Bar & Times */}
+                <div className="w-full flex items-center gap-4">
+                  <span className="text-xs font-medium text-white/80 w-12 text-right drop-shadow-md">
+                    {formatDuration(effectivePosition)}
+                  </span>
+                  <div className="flex-1">
+                    <M3Slider
+                      variant="thin"
+                      min={0}
+                      max={duration || 100}
+                      step={1}
+                      value={effectivePosition || 0}
+                      disabled={!duration}
+                      onChange={(e) =>
+                        callService('media_player', 'media_seek', {
+                          entity_id: mpId,
+                          seek_position: parseFloat(e.target.value),
+                        })
+                      }
+                      colorClass="bg-white"
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-white/80 w-12 drop-shadow-md">
+                    {formatDuration(duration)}
+                  </span>
+                </div>
+
+                {/* Main Controls Row */}
+                <div className="flex items-center justify-between w-full gap-8">
+                  {/* Volume Group */}
+                  <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+                    <button
+                      onClick={() =>
+                        callService('media_player', 'volume_mute', {
+                          entity_id: mpId,
+                          is_volume_muted: !isMuted,
+                        })
+                      }
+                      className="text-white/80 hover:text-white transition-colors"
+                    >
+                      {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                    </button>
+                    <div className="w-24 md:w-48 lg:w-64">
+                      <M3Slider
+                         variant="volume"
+                         min={0}
+                         max={100}
+                         step={1}
+                         value={volume * 100}
+                         onChange={(e) =>
+                           callService('media_player', 'volume_set', {
+                             entity_id: mpId,
+                             volume_level: parseFloat(e.target.value) / 100,
+                           })
+                         }
+                         colorClass="bg-white"
+                       />
+                    </div>
+                  </div>
+
+                  {/* Playback Buttons */}
+                  <div className="flex items-center gap-6 md:gap-8">
+                     <button
+                        onClick={() =>
+                          callService('media_player', 'shuffle_set', {
+                            entity_id: mpId,
+                            shuffle: !shuffle,
+                          })
+                        }
+                        className={`text-white/60 hover:text-white transition-colors ${shuffle ? 'text-green-400' : ''}`}
+                      >
+                        <Shuffle size={20} />
+                      </button>
+
+                    <button
+                      onClick={() =>
+                        callService('media_player', 'media_previous_track', { entity_id: mpId })
+                      }
+                      className="text-white hover:text-white/80 transition-transform active:scale-90"
+                    >
+                      <SkipBack size={32} fill="currentColor" />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        callService('media_player', 'media_play_pause', { entity_id: mpId })
+                      }
+                      className="flex items-center justify-center bg-white text-black h-16 w-16 md:h-20 md:w-20 rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all"
+                    >
+                       {isPlaying ? (
+                        <Pause size={32} fill="currentColor" />
+                      ) : (
+                        <Play size={32} fill="currentColor" className="ml-1" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        callService('media_player', 'media_next_track', { entity_id: mpId })
+                      }
+                      className="text-white hover:text-white/80 transition-transform active:scale-90"
+                    >
+                      <SkipForward size={32} fill="currentColor" />
+                    </button>
+
+                    <button
+                        onClick={() => {
+                          const modes = ['off', 'one', 'all'];
+                          const nextMode = modes[(modes.indexOf(repeat) + 1) % modes.length];
+                          callService('media_player', 'repeat_set', {
+                            entity_id: mpId,
+                            repeat: nextMode,
+                          });
+                        }}
+                        className={`text-white/60 hover:text-white transition-colors ${repeat !== 'off' ? 'text-green-400' : ''}`}
+                      >
+                       {repeat === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
+                    </button>
+                  </div>
+                  
+                  {/* Empty spacer to balance layout or auxiliary controls */}
+                  <div className="hidden md:block w-[140px]" /> 
+                  
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex w-full flex-col gap-6 overflow-y-auto border-t border-[var(--glass-border)] pt-6 pl-0 md:w-80 md:border-t-0 md:border-l md:pt-24 md:pl-12">
+        <div
+          className={`relative min-h-0 overflow-hidden transition-all duration-300 ease-out ${showPlayersSidebar ? 'w-full border-t border-[var(--glass-border)] md:w-80 md:border-t-0 md:border-l lg:w-[22rem]' : 'w-0 border-0'}`}
+        >
+          <div className="custom-scrollbar absolute inset-0 flex min-h-0 flex-col gap-6 overflow-y-auto pt-4 pl-0 md:pt-10 md:pl-8 lg:pt-16 lg:pl-12">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold tracking-[0.2em] text-gray-500 uppercase">
               {isSonos || isAllSonos
@@ -1330,6 +1624,8 @@ export default function MediaModal({
                   : null;
                 return s?.user_name || '';
               })();
+              const pArtworkUrl = getArtworkUrl(p);
+              const safePArtworkUrl = sanitizeImageSrc(pArtworkUrl);
 
               return (
                 <div
@@ -1341,16 +1637,19 @@ export default function MediaModal({
                     className="group flex min-w-0 flex-1 items-center gap-4 text-left"
                   >
                     <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--glass-bg)]">
-                      <div className="flex h-full w-full items-center justify-center">
-                        {isSonosUiEntity(p) ? (
-                          <Speaker className="h-5 w-5 text-gray-600" />
-                        ) : (
-                          <Music className="h-5 w-5 text-gray-600" />
-                        )}
-                      </div>
-                      {p.state === 'playing' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                      {safePArtworkUrl ? (
+                        <img
+                          src={safePArtworkUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          {isSonosUiEntity(p) ? (
+                            <Speaker className="h-5 w-5 text-gray-600" />
+                          ) : (
+                            <Music className="h-5 w-5 text-gray-600" />
+                          )}
                         </div>
                       )}
                     </div>
@@ -1360,10 +1659,36 @@ export default function MediaModal({
                       >
                         {applyPlayerNameDisplayFilter(p.attributes?.friendly_name || p.entity_id)}
                       </p>
-                      <p className="mt-0.5 truncate text-[10px] text-gray-600">{pTitle}</p>
+                      <p className="mt-0.5 truncate text-xs font-semibold text-gray-500 md:text-sm">
+                        {pTitle}
+                      </p>
                       {pUser && <p className="truncate text-[10px] text-gray-500">{pUser}</p>}
                     </div>
                   </button>
+                  {p.state === 'playing' && (
+                    <div
+                      className="ml-1 flex h-7 items-end gap-0.5 px-1"
+                      title={t('status.playing') || 'Playing'}
+                      aria-label={t('status.playing') || 'Playing'}
+                    >
+                      <span
+                        className="media-eq-bar h-2.5 w-0.5 rounded-full bg-[var(--accent-color)]"
+                        style={{ animationDuration: '1.05s', animationDelay: '0s' }}
+                      />
+                      <span
+                        className="media-eq-bar h-4 w-0.5 rounded-full bg-[var(--accent-color)]"
+                        style={{ animationDuration: '0.9s', animationDelay: '0.12s' }}
+                      />
+                      <span
+                        className="media-eq-bar h-3 w-0.5 rounded-full bg-[var(--accent-color)]"
+                        style={{ animationDuration: '1.2s', animationDelay: '0.2s' }}
+                      />
+                      <span
+                        className="media-eq-bar h-5 w-0.5 rounded-full bg-[var(--accent-color)]"
+                        style={{ animationDuration: '0.95s', animationDelay: '0.32s' }}
+                      />
+                    </div>
+                  )}
                   {canGroup && !isSelf && (
                     <button
                       onClick={(e) => {
@@ -1465,6 +1790,7 @@ export default function MediaModal({
               )}
             </div>
           )}
+          </div>
         </div>
 
         {showChoosePanel && (
@@ -1541,6 +1867,11 @@ export default function MediaModal({
                   {!favoritesLoading && currentFavorites.length > 0 && (
                     <div className="grid grid-cols-2 gap-2">
                       {currentFavorites.map((fav) => {
+                        const favImage =
+                          fav?.image && typeof getEntityImageUrl === 'function'
+                            ? getEntityImageUrl(fav.image)
+                            : fav?.image || null;
+                        const safeFavImage = sanitizeImageSrc(favImage);
                         return (
                           <button
                             key={`fav::${fav.type}::${fav.id}`}
@@ -1549,9 +1880,17 @@ export default function MediaModal({
                             className="group flex flex-col items-center gap-2 rounded-xl p-3 transition-colors hover:bg-[var(--glass-bg-hover)]"
                           >
                             <div className="aspect-square w-full flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Heart className="h-6 w-6 text-[var(--text-secondary)] transition-colors group-hover:text-[var(--accent-color)]" />
-                              </div>
+                              {safeFavImage ? (
+                                <img
+                                  src={safeFavImage}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <Heart className="h-6 w-6 text-[var(--text-secondary)] transition-colors group-hover:text-[var(--accent-color)]" />
+                                </div>
+                              )}
                             </div>
                             <p className="line-clamp-2 text-center text-[10px] leading-tight font-bold tracking-wider text-[var(--text-primary)] uppercase">
                               {fav.label}

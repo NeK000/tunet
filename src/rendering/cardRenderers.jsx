@@ -986,6 +986,7 @@ const CARD_REGISTRY = [
   { prefix: 'fan.', renderer: renderFanCard },
   { prefix: 'media_player.', renderer: renderMediaPlayerCard },
   { prefix: 'media_group_', renderer: renderMediaGroupCard },
+  { prefix: 'sonos_group_', renderer: renderMediaGroupCard },
   { prefix: 'calendar_card_', renderer: renderCalendarCard },
   { prefix: 'climate_card_', renderer: renderGenericClimateCard },
   { prefix: 'todo_card_', renderer: renderTodoCard },
@@ -1051,7 +1052,7 @@ export function dispatchCardRender(cardId, dragProps, getControls, cardStyle, se
   }
 
   // Empty/missing media groups in edit mode
-  if (editMode && cardId.startsWith('media_group_')) {
+  if (editMode && (cardId.startsWith('media_group_') || cardId.startsWith('sonos_group_'))) {
     return (
       <MissingEntityCard
         cardId={cardId}

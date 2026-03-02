@@ -229,6 +229,7 @@
  * @property {(value: string | null) => void} setEditingPage
  * @property {() => void} createPage
  * @property {() => void} createMediaPage
+ * @property {() => void} createSonosPage
  * @property {(pageId: string) => void} deletePage
  * @property {(cardId: string, listName?: string) => void} removeCard
  */
@@ -238,6 +239,7 @@
  * @property {boolean} showAddCardModal
  * @property {string} activePage
  * @property {(pageId: string) => boolean} isMediaPage
+ * @property {(pageId: string) => boolean} isSonosPage
  * @property {PagesConfig} pagesConfig
  * @property {(newConfig: PagesConfig) => void} persistConfig
  * @property {CardSettingsMap} cardSettings

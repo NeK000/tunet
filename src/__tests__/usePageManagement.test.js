@@ -6,7 +6,9 @@ import { usePageManagement } from '../hooks/usePageManagement';
 const t = (key) => {
   const map = {
     'page.newDefault': 'New Page',
+    'addCard.type.media': 'Media',
     'sonos.pageName': 'Media',
+    'addCard.type.sonos': 'SONOS',
     'confirm.deletePage': 'Delete this page?',
   };
   return map[key] ?? key;
@@ -99,7 +101,7 @@ describe('usePageManagement › createPage', () => {
 // createMediaPage
 // ═════════════════════════════════════════════════════════════════════════
 describe('usePageManagement › createMediaPage', () => {
-  it('creates a media page with the default Sonos label', () => {
+  it('creates a media page with media label', () => {
     const props = makeProps();
     const { result } = renderHook(() => usePageManagement(props));
 
@@ -111,7 +113,7 @@ describe('usePageManagement › createMediaPage', () => {
       })
     );
     expect(props.savePageSetting).toHaveBeenCalledWith('media', 'label', 'Media');
-    expect(props.savePageSetting).toHaveBeenCalledWith('media', 'icon', 'Speaker');
+    expect(props.savePageSetting).toHaveBeenCalledWith('media', 'icon', 'Music');
     expect(props.savePageSetting).toHaveBeenCalledWith('media', 'type', 'media');
     expect(props.savePageSetting).toHaveBeenCalledWith('media', 'mediaIds', []);
     expect(props.setShowAddPageModal).toHaveBeenCalledWith(false);
@@ -127,6 +129,25 @@ describe('usePageManagement › createMediaPage', () => {
     act(() => result.current.createMediaPage());
 
     expect(props.savePageSetting).toHaveBeenCalledWith('media_2', 'label', 'Media 2');
+  });
+});
+
+describe('usePageManagement › createSonosPage', () => {
+  it('creates a sonos page with sonos label and type', () => {
+    const props = makeProps();
+    const { result } = renderHook(() => usePageManagement(props));
+
+    act(() => result.current.createSonosPage());
+
+    expect(props.persistConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pages: expect.arrayContaining(['sonos']),
+      })
+    );
+    expect(props.savePageSetting).toHaveBeenCalledWith('sonos', 'label', 'SONOS');
+    expect(props.savePageSetting).toHaveBeenCalledWith('sonos', 'icon', 'Speaker');
+    expect(props.savePageSetting).toHaveBeenCalledWith('sonos', 'type', 'sonos');
+    expect(props.savePageSetting).toHaveBeenCalledWith('sonos', 'mediaIds', []);
   });
 });
 
