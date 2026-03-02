@@ -196,6 +196,9 @@
 .popup-surface-divider {
   background: color-mix(in srgb, var(--glass-border) 35%, transparent);
 }
+.popup-surface-group > * + * {
+  border-top: 1px solid color-mix(in srgb, var(--glass-border) 20%, transparent);
+}
 .popup-anim {
   border-color: var(--modal-border, var(--glass-border));
   box-shadow: var(--modal-shadow, 0 20px 40px rgba(0, 0, 0, 0.35));

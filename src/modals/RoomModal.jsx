@@ -442,7 +442,7 @@ export default function RoomModal({
 
   const mediaSection =
     showPopupMedia && mediaPlayers.length > 0 ? (
-      <section className="popup-surface space-y-3 rounded-3xl p-4">
+      <section className="space-y-3 p-4">
         <button
           type="button"
           onClick={() => toggleSectionCollapsed('media')}
@@ -458,10 +458,7 @@ export default function RoomModal({
         </button>
 
         {!isSectionCollapsed('media') && (
-          <div className="custom-scrollbar max-h-[32vh] space-y-2 overflow-y-auto pr-1">
-            <div className="px-1 text-[10px] font-bold tracking-widest text-[var(--text-secondary)] uppercase">
-              {t('room.mediaPlayersList') || 'Players'} ({mediaPlayers.length})
-            </div>
+          <div className="custom-scrollbar max-h-[32vh] space-y-1 overflow-y-auto pr-1">
             {orderedMediaPlayers.map(({ id, entity }) => {
               const cover = getEntityImageUrl?.(
                 entity.attributes?.entity_picture || entity.attributes?.media_image_url
@@ -470,60 +467,47 @@ export default function RoomModal({
               return (
                 <div
                   key={id}
-                  className="relative overflow-hidden rounded-xl bg-[var(--glass-bg)]/70 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl bg-[var(--glass-bg)]/40 px-3 py-2.5"
                 >
-                  {cover && (
-                    <>
-                      <img
-                        src={cover}
-                        alt=""
-                        className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-15 blur-lg"
-                      />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/25 to-black/5" />
-                    </>
-                  )}
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--glass-bg)]">
+                    {cover ? (
+                      <img src={cover} alt="Cover" className="h-full w-full object-cover" />
+                    ) : (
+                      <Tv className="h-5 w-5 text-[var(--text-secondary)]" />
+                    )}
+                  </div>
 
-                  <div className="relative z-10 flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--glass-bg)]">
-                      {cover ? (
-                        <img src={cover} alt="Cover" className="h-full w-full object-cover" />
-                      ) : (
-                        <Tv className="h-5 w-5 text-[var(--text-secondary)]" />
-                      )}
-                    </div>
+                  <div className="mr-2 min-w-0 flex-1">
+                    <span className="block truncate text-xs font-bold text-[var(--text-primary)]">
+                      {entity.attributes?.friendly_name || id}
+                    </span>
+                    <span className="block truncate text-[10px] text-[var(--text-secondary)]">
+                      {entity.attributes?.media_title ||
+                        entity.attributes?.media_artist ||
+                        entity.attributes?.media_album_name ||
+                        '—'}
+                    </span>
+                  </div>
 
-                    <div className="mr-2 min-w-0 flex-1">
-                      <span className="block truncate text-xs font-bold text-[var(--text-primary)]">
-                        {entity.attributes?.friendly_name || id}
-                      </span>
-                      <span className="block truncate text-[10px] text-[var(--text-secondary)]">
-                        {entity.attributes?.media_title ||
-                          entity.attributes?.media_artist ||
-                          entity.attributes?.media_album_name ||
-                          '—'}
-                      </span>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        onClick={() => handleMediaAction(id, 'media_previous_track')}
-                        className="popup-surface popup-surface-hover flex h-9 w-9 items-center justify-center rounded-xl"
-                      >
-                        <SkipBack className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleMediaAction(id, 'media_play_pause')}
-                        className="popup-surface popup-surface-hover flex h-10 w-10 items-center justify-center rounded-xl"
-                      >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleMediaAction(id, 'media_next_track')}
-                        className="popup-surface popup-surface-hover flex h-9 w-9 items-center justify-center rounded-xl"
-                      >
-                        <SkipForward className="h-4 w-4" />
-                      </button>
-                    </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      onClick={() => handleMediaAction(id, 'media_previous_track')}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+                    >
+                      <SkipBack className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleMediaAction(id, 'media_play_pause')}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+                    >
+                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleMediaAction(id, 'media_next_track')}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+                    >
+                      <SkipForward className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               );
@@ -560,9 +544,9 @@ export default function RoomModal({
         </h3>
 
         <div className="custom-scrollbar grid flex-1 grid-cols-1 gap-4 overflow-y-auto pr-1 lg:grid-cols-2">
-          <div className="space-y-4">
+          <div className="popup-surface popup-surface-group self-start overflow-hidden rounded-3xl">
             {showPopupClimate && climateEntities.length > 0 && (
-              <section className="popup-surface space-y-3 rounded-3xl p-4">
+              <section className="space-y-3 p-4">
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
@@ -600,16 +584,6 @@ export default function RoomModal({
 
                 {!isSectionCollapsed('climate') && activeClimate && (
                   <>
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px] font-bold tracking-widest text-[var(--text-muted)] uppercase">
-                        {t('room.tempSensor') || 'Temperature sensor'}
-                      </div>
-                      <div className="text-lg font-semibold text-[var(--text-primary)] tabular-nums">
-                        {displayCurrentClimateTemp}
-                        {displayTemperatureUnit}
-                      </div>
-                    </div>
-
                     <div className="flex items-center gap-3">
                       <div
                         className="rounded-2xl p-2.5"
@@ -628,13 +602,17 @@ export default function RoomModal({
                       >
                         <Flame className="h-4 w-4" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div
                           className="truncate text-[11px] font-bold tracking-widest text-[var(--text-muted)] uppercase"
                           title={activeClimateId || ''}
                         >
                           {activeClimate.attributes?.friendly_name || activeClimateId}
                         </div>
+                      </div>
+                      <div className="text-lg font-semibold text-[var(--text-primary)] tabular-nums">
+                        {displayCurrentClimateTemp}
+                        {displayTemperatureUnit}
                       </div>
                     </div>
 
@@ -719,7 +697,7 @@ export default function RoomModal({
             )}
 
             {showPopupTempOverview && tempOverview.length > 0 && (
-              <section className="popup-surface rounded-3xl p-4">
+              <section className="p-4">
                 <button
                   type="button"
                   onClick={() => toggleSectionCollapsed('tempOverview')}
@@ -753,16 +731,13 @@ export default function RoomModal({
                       const displayUnit =
                         isNumeric && kind ? getDisplayUnitForKind(kind, effectiveUnitMode) : unit;
                       return (
-                        <div
-                          key={id}
-                          className="flex items-center justify-between rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-2"
-                        >
+                        <div key={id} className="flex items-center justify-between px-1 py-1.5">
                           <div className="mr-3 min-w-0" title={id}>
-                            <div className="truncate text-xs font-bold text-[var(--text-primary)]">
+                            <div className="truncate text-xs text-[var(--text-secondary)]">
                               {entity.attributes?.friendly_name || id}
                             </div>
                           </div>
-                          <div className="text-xs font-bold text-[var(--text-secondary)]">
+                          <div className="text-xs font-semibold text-[var(--text-primary)] tabular-nums">
                             {isNumeric
                               ? `${formatUnitValue(converted, { fallback: '--' })}${displayUnit}`
                               : rawState}
@@ -776,7 +751,7 @@ export default function RoomModal({
             )}
 
             {showPopupLights && lights.length > 0 && (
-              <section className="popup-surface space-y-3 rounded-3xl p-4">
+              <section className="space-y-3 p-4">
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
@@ -849,7 +824,7 @@ export default function RoomModal({
             )}
 
             {showPopupVacuum && vacuums.length > 0 && (
-              <section className="popup-surface space-y-3 rounded-3xl p-4">
+              <section className="space-y-3 p-4">
                 <button
                   type="button"
                   onClick={() => toggleSectionCollapsed('vacuum')}
@@ -942,92 +917,89 @@ export default function RoomModal({
             {!moveMediaToRight && mediaSection}
           </div>
 
-          <div className="space-y-4">
+          <div className="popup-surface popup-surface-group self-start overflow-hidden rounded-3xl">
             {moveMediaToRight && mediaSection}
-            {otherEntities.length > 0 && (
-              <div className="space-y-4">
-                {categorizedOtherEntities.map(([domain, items]) => (
-                  <section key={domain} className="popup-surface rounded-3xl p-4">
-                    <button
-                      type="button"
-                      onClick={() => toggleSectionCollapsed(domain)}
-                      className="mb-3 flex w-full items-center justify-between text-left"
-                    >
-                      <h4 className="text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase">
-                        {domain === 'other'
-                          ? t('room.popupOtherGrouped') || 'Other entities'
-                          : domain.replace('_', ' ')}
-                      </h4>
-                      <ChevronDown
-                        className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${isSectionCollapsed(domain) ? '-rotate-90' : 'rotate-0'}`}
-                      />
-                    </button>
+            {otherEntities.length > 0 &&
+              categorizedOtherEntities.map(([domain, items]) => (
+                <section key={domain} className="p-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionCollapsed(domain)}
+                    className="mb-3 flex w-full items-center justify-between text-left"
+                  >
+                    <h4 className="text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase">
+                      {domain === 'other'
+                        ? t('room.popupOtherGrouped') || 'Other entities'
+                        : domain.replace('_', ' ')}
+                    </h4>
+                    <ChevronDown
+                      className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${isSectionCollapsed(domain) ? '-rotate-90' : 'rotate-0'}`}
+                    />
+                  </button>
 
-                    {!isSectionCollapsed(domain) && (
-                      <div className="space-y-1.5">
-                        {items.map(({ id, entity }, index) => {
-                          const actions = getOtherEntityActions(id, entity);
-                          const hasOnOffPills = actions.some(
-                            (action) => action.kind === 'onoff-pills'
-                          );
-                          return (
-                            <div
-                              key={id}
-                              className={`flex items-center justify-between gap-3 px-2 py-2 ${index < items.length - 1 ? 'border-b border-[var(--glass-border)]/35' : ''}`}
-                            >
-                              <div className="min-w-0" title={id}>
-                                <div className="truncate text-xs font-semibold text-[var(--text-primary)]">
-                                  {entity.attributes?.friendly_name || id}
-                                </div>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2">
-                                {domain === 'other' && !hasOnOffPills && (
-                                  <span className="text-[10px] font-bold tracking-widest text-[var(--text-secondary)] uppercase">
-                                    {entity.state}
-                                  </span>
-                                )}
-                                {actions.map((action) =>
-                                  action.kind === 'onoff-pills' ? (
-                                    <div
-                                      key={action.key}
-                                      className="flex shrink-0 items-center gap-1.5 whitespace-nowrap"
-                                    >
-                                      <button
-                                        onClick={action.onOn}
-                                        className={`control-on rounded-full px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all ${action.isOn ? 'bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                                      >
-                                        {t('common.on') || 'On'}
-                                      </button>
-                                      <button
-                                        onClick={action.onOff}
-                                        className={`control-off rounded-full px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all ${!action.isOn ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                                      >
-                                        {t('common.off') || 'Off'}
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      key={action.key}
-                                      onClick={action.onClick}
-                                      className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg-hover)] px-2.5 py-1 text-[10px] font-bold tracking-widest text-[var(--text-primary)] uppercase transition-colors hover:bg-[var(--accent-color)]/20"
-                                    >
-                                      {action.label}
-                                    </button>
-                                  )
-                                )}
+                  {!isSectionCollapsed(domain) && (
+                    <div className="space-y-1.5">
+                      {items.map(({ id, entity }, index) => {
+                        const actions = getOtherEntityActions(id, entity);
+                        const hasOnOffPills = actions.some(
+                          (action) => action.kind === 'onoff-pills'
+                        );
+                        return (
+                          <div
+                            key={id}
+                            className={`flex items-center justify-between gap-3 px-2 py-2 ${index < items.length - 1 ? 'border-b border-[var(--glass-border)]/35' : ''}`}
+                          >
+                            <div className="min-w-0" title={id}>
+                              <div className="truncate text-xs font-semibold text-[var(--text-primary)]">
+                                {entity.attributes?.friendly_name || id}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                ))}
-              </div>
-            )}
+                            <div className="flex shrink-0 items-center gap-2">
+                              {domain === 'other' && !hasOnOffPills && (
+                                <span className="text-[10px] font-bold tracking-widest text-[var(--text-secondary)] uppercase">
+                                  {entity.state}
+                                </span>
+                              )}
+                              {actions.map((action) =>
+                                action.kind === 'onoff-pills' ? (
+                                  <div
+                                    key={action.key}
+                                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap"
+                                  >
+                                    <button
+                                      onClick={action.onOn}
+                                      className={`control-on rounded-full px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all ${action.isOn ? 'bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+                                    >
+                                      {t('common.on') || 'On'}
+                                    </button>
+                                    <button
+                                      onClick={action.onOff}
+                                      className={`control-off rounded-full px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all ${!action.isOn ? 'bg-[var(--glass-bg-hover)] text-[var(--text-primary)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+                                    >
+                                      {t('common.off') || 'Off'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    key={action.key}
+                                    onClick={action.onClick}
+                                    className="rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg-hover)] px-2.5 py-1 text-[10px] font-bold tracking-widest text-[var(--text-primary)] uppercase transition-colors hover:bg-[var(--accent-color)]/20"
+                                  >
+                                    {action.label}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              ))}
 
             {otherEntities.length === 0 && (
-              <section className="popup-surface rounded-3xl p-4">
+              <section className="p-4">
                 <h4 className="mb-2 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase">
                   {t('room.popupOtherIncluded') || 'Other included entities'}
                 </h4>
