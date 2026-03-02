@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from '../icons';
 import M3Slider from '../components/ui/M3Slider';
+import SafeImage from '../components/ui/SafeImage';
 import { getMediaPlayerPowerAction } from '../utils/mediaPlayerFeatures';
 
 const readJSON = (key, fallback) => {
@@ -157,6 +158,7 @@ export default function MediaModal({
   const [viewModeByModal, setViewModeByModal] = useState(() =>
     readJSON(MEDIA_VIEW_MODE_KEY, {})
   );
+  const [failedImageMap, setFailedImageMap] = useState({});
   const wasOpenRef = useRef(false);
   const [playerNameDisplayFilter, setPlayerNameDisplayFilter] = useState(() =>
     readText('tunet_media_name_display_filter', '')
@@ -339,9 +341,9 @@ export default function MediaModal({
 
   const getViewModeScope = useCallback(() => {
     const modalType = activeMediaModal === 'sonos' ? 'sonos' : 'media';
-    const cardScope = activeMediaGroupKey || activeMediaId || 'default';
+    const cardScope = activeMediaGroupKey || 'default';
     return `${modalType}::${cardScope}`;
-  }, [activeMediaModal, activeMediaGroupKey, activeMediaId]);
+  }, [activeMediaModal, activeMediaGroupKey]);
 
   const persistViewModeForScope = useCallback(
     (value) => {
@@ -565,11 +567,23 @@ export default function MediaModal({
   }, []);
   const currentArtworkUrl = getArtworkUrl(currentMp);
   const safeCurrentArtworkUrl = sanitizeImageSrc(currentArtworkUrl);
+  const markImageFailed = useCallback((src) => {
+    if (!src) return;
+    setFailedImageMap((prev) => {
+      if (prev[src]) return prev;
+      return { ...prev, [src]: true };
+    });
+  }, []);
+  const isImageAvailable = useCallback(
+    (src) => Boolean(src) && !failedImageMap[src],
+    [failedImageMap]
+  );
   const powerAction = getMediaPlayerPowerAction(currentMp);
   const canTogglePower = Boolean(powerAction);
   const isPowerOffAction = powerAction === 'turn_off';
 
   let mpTitle = mpId ? getA(mpId, 'media_title') : '';
+  const mpArtist = mpId ? getA(mpId, 'media_artist') : '';
 
   let mpSeries = mpId ? getA(mpId, 'media_series_title') : '';
   if (contentType === 'episode') {
@@ -927,8 +941,13 @@ export default function MediaModal({
       >
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
-            {safeChoiceImage ? (
-              <img src={safeChoiceImage} alt="" className="h-full w-full object-cover" />
+            {isImageAvailable(safeChoiceImage) ? (
+              <SafeImage
+                imageUrl={safeChoiceImage}
+                alt=""
+                className="h-full w-full object-cover"
+                onError={() => markImageFailed(safeChoiceImage)}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
                 <Music className="h-4 w-4 text-[var(--text-secondary)]" />
@@ -1012,13 +1031,13 @@ export default function MediaModal({
       >
         <button
           onClick={handleModalClose}
-          className={`modal-close absolute z-50 ${showPlayersSidebar ? 'top-6 right-6 md:top-10 md:right-10' : 'top-4 right-4'}`}
+          className={`modal-close absolute z-50 ${showPlayersSidebar ? 'top-6 right-6 md:top-10 md:right-10' : 'top-6 right-6 md:top-10 md:right-10'}`}
         >
           <X className="h-6 w-6 text-white drop-shadow-md" />
         </button>
 
         <div className={`custom-scrollbar relative z-10 flex min-h-0 flex-col justify-start ${showPlayersSidebar ? 'flex-1 pr-1 md:pr-2 overflow-hidden' : 'h-full w-full overflow-hidden'}`}>
-          <div className={`flex items-center gap-3 md:gap-4 flex-shrink-0 ${showPlayersSidebar ? 'mb-2 md:mb-4' : 'absolute top-4 left-4 z-50'}`}>
+          <div className={`flex items-center gap-3 md:gap-4 flex-shrink-0 ${showPlayersSidebar ? 'mb-2 md:mb-4' : 'absolute top-6 left-6 z-50 md:top-10 md:left-10'}`}>
             <div
               className="rounded-2xl p-3 transition-all duration-500 md:p-4"
               style={{ backgroundColor: showPlayersSidebar ? 'var(--glass-bg)' : 'rgba(255,255,255,0.1)', color: showPlayersSidebar ? 'var(--text-secondary)' : 'white' }}
@@ -1054,7 +1073,7 @@ export default function MediaModal({
               </div>
             </div>
           </div>
-          <div className={`flex flex-col gap-2 flex-shrink-0 ${showPlayersSidebar ? 'mb-2 md:mb-4' : 'absolute top-4 right-16 z-50'}`}>
+          <div className={`flex flex-col gap-2 flex-shrink-0 ${showPlayersSidebar ? 'mb-2 md:mb-4' : 'absolute top-6 right-20 z-50 md:top-10 md:right-24'}`}>
             <div className="flex flex-wrap items-center gap-2">
               {showPlayersSidebar && (
                 <>
@@ -1108,11 +1127,12 @@ export default function MediaModal({
             <div
               className={`group relative overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-2xl md:rounded-3xl flex-shrink ${showPlayersSidebar ? 'w-full aspect-square max-h-[40vh] mx-auto object-contain' : 'h-44 w-full sm:h-52 md:h-auto md:w-[clamp(14rem,30vw,20rem)] md:flex-shrink-0 md:aspect-square'}`}
             >
-              {safeCurrentArtworkUrl ? (
-                <img
-                  src={safeCurrentArtworkUrl}
+              {isImageAvailable(safeCurrentArtworkUrl) ? (
+                <SafeImage
+                  imageUrl={safeCurrentArtworkUrl}
                   alt=""
                   className="h-full w-full object-cover"
+                  onError={() => markImageFailed(safeCurrentArtworkUrl)}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
@@ -1407,12 +1427,13 @@ export default function MediaModal({
             <div className="flex h-full w-full flex-col justify-end pb-12">
               {/* Background Artwork - Full Screen */}
               <div className="absolute inset-0 z-0">
-                {safeCurrentArtworkUrl ? (
+                {isImageAvailable(safeCurrentArtworkUrl) ? (
                   <>
-                    <img
-                      src={safeCurrentArtworkUrl}
+                    <SafeImage
+                      imageUrl={safeCurrentArtworkUrl}
                       alt=""
                       className="h-full w-full object-cover"
+                      onError={() => markImageFailed(safeCurrentArtworkUrl)}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/30" />
                   </>
@@ -1637,11 +1658,12 @@ export default function MediaModal({
                     className="group flex min-w-0 flex-1 items-center gap-4 text-left"
                   >
                     <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--glass-bg)]">
-                      {safePArtworkUrl ? (
-                        <img
-                          src={safePArtworkUrl}
+                      {isImageAvailable(safePArtworkUrl) ? (
+                        <SafeImage
+                          imageUrl={safePArtworkUrl}
                           alt=""
                           className="h-full w-full object-cover"
+                          onError={() => markImageFailed(safePArtworkUrl)}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
@@ -1880,11 +1902,12 @@ export default function MediaModal({
                             className="group flex flex-col items-center gap-2 rounded-xl p-3 transition-colors hover:bg-[var(--glass-bg-hover)]"
                           >
                             <div className="aspect-square w-full flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
-                              {safeFavImage ? (
-                                <img
-                                  src={safeFavImage}
+                              {isImageAvailable(safeFavImage) ? (
+                                <SafeImage
+                                  imageUrl={safeFavImage}
                                   alt=""
                                   className="h-full w-full object-cover"
+                                  onError={() => markImageFailed(safeFavImage)}
                                 />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center">
