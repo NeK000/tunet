@@ -152,7 +152,7 @@ Practical guide to what each card is best for, what you can configure, and commo
 
 **Best for:** hourly electricity price monitoring.
 
-<img width="371" height="236" alt="image" src="https://github.com/user-attachments/assets/de41e0e7-a364-4ada-85f0-c199a29ad4c3" />
+
 
 - Nordpool sensor selection.
 - Decimal precision and display formatting options.
@@ -161,7 +161,8 @@ Practical guide to what each card is best for, what you can configure, and commo
 
 **Best for:** compact room-level overview cards.
 
-<img width="375" height="243" alt="image" src="https://github.com/user-attachments/assets/570fc563-7fc4-400c-a971-23335ee876b2" />
+<img width="371" height="236" alt="image" src="https://github.com/user-attachments/assets/de41e0e7-a364-4ada-85f0-c199a29ad4c3" />
+
 
 - Build room card from Home Assistant area.
 - Auto-suggested entities with optional manual mapping.
@@ -171,7 +172,8 @@ Practical guide to what each card is best for, what you can configure, and commo
 
 **Best for:** EV/vehicle status dashboards.
 
-<img width="382" height="236" alt="image" src="https://github.com/user-attachments/assets/42195012-5219-4e63-b02c-b6c995b095af" />
+<img width="375" height="243" alt="image" src="https://github.com/user-attachments/assets/570fc563-7fc4-400c-a971-23335ee876b2" />
+
 
 - Card-level mapping for EV-related sensors (battery/range/charging/temp/location).
 - Optional custom image URL and per-sensor bindings.
@@ -187,6 +189,7 @@ Practical guide to what each card is best for, what you can configure, and commo
 
 **Best for:** alarm panel actions with integration-safe capability rendering.
 
+<img width="382" height="236" alt="image" src="https://github.com/user-attachments/assets/42195012-5219-4e63-b02c-b6c995b095af" />
 <img width="601" height="547" alt="image" src="https://github.com/user-attachments/assets/08e78daa-b151-4a4a-9679-cdf622950014" />
 <img width="1146" height="487" alt="image" src="https://github.com/user-attachments/assets/a9f8fc4f-311f-4ad4-9df7-5552ccf9a63f" />
 
