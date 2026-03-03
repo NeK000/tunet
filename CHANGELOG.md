@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.12.1] — 2026-03-03
+
+### Changed
+- Improved Vacuum popup compatibility for mixed integrations with broader state-label handling and capability-aware controls.
+- Added optional vacuum sensor-mapping labels/translations across supported locales.
+- Removed the temporary Vacuum image-view toggle and kept the popup focused on controls and stats.
+
+
 ## [1.12.0] — 2026-03-02
 
 ### Changed
@@ -18,9 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- Removed the temporary Vacuum image-view toggle and kept the popup focused on controls and stats.
-- Added optional vacuum sensor mapping labels/translations across supported locales.
-- Improved Vacuum popup compatibility for mixed integrations (state labels, capability-aware controls, and stats sourcing).
+- No unreleased changes yet.
 
 ## [1.11.2] — 2026-03-01
 
