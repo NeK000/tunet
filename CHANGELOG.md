@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- No unreleased changes yet.
+- Improved Climate card fan-speed display by normalizing fan-mode values across integrations, so non-auto modes no longer fall back to "AUTO" (#102).
 
 ## [1.11.2] — 2026-03-01
 
