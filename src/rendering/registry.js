@@ -12,15 +12,15 @@ import { renderMediaPlayerCard } from './cards/mediaPlayerRenderer';
 import { renderMediaGroupCard } from './cards/mediaGroupRenderer';
 import { renderAlarmCard } from './cards/alarmRenderer';
 import { renderRoomCard } from './cards/roomRenderer';
+import { renderWeatherTempCard } from './cards/weatherTempRenderer';
+import { renderGenericClimateCard } from './cards/climateRenderer';
+import { renderGenericCostCard } from './cards/costRenderer';
+import { renderGenericAndroidTVCard } from './cards/androidTvRenderer';
+import { renderCalendarCard } from './cards/calendarRenderer';
+import { renderTodoCard } from './cards/todoRenderer';
+import { renderNordpoolCard } from './cards/nordpoolRenderer';
+import { renderCoverCard } from './cards/coverRenderer';
 import {
-  renderWeatherTempCard,
-  renderGenericClimateCard,
-  renderGenericCostCard,
-  renderGenericAndroidTVCard,
-  renderCalendarCard,
-  renderTodoCard,
-  renderNordpoolCard,
-  renderCoverCard,
 } from './cardRenderers';
 
 /**
