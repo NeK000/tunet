@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { X, MapPin, Battery } from '../icons';
@@ -28,6 +28,11 @@ export default function PersonModal({
   const effectiveUnitMode = getEffectiveUnitMode(unitsMode, haConfig);
   const name = customName || entity?.attributes?.friendly_name || personId;
   const picture = getEntityImageUrl ? getEntityImageUrl(entity?.attributes?.entity_picture) : null;
+  const [pictureFailed, setPictureFailed] = useState(false);
+
+  useEffect(() => {
+    setPictureFailed(false);
+  }, [picture]);
 
   // Settings overrides
   const manualTrackerId = settings?.deviceTracker;
@@ -313,11 +318,12 @@ export default function PersonModal({
         {/* Header Section */}
         <div className="mb-6 flex items-center gap-4 font-sans">
           <div className="group relative h-16 w-16 overflow-hidden rounded-full border border-[var(--glass-border)] shadow-lg">
-            {picture ? (
+            {picture && !pictureFailed ? (
               <img
                 src={picture}
                 alt={name}
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                onError={() => setPictureFailed(true)}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-[var(--glass-bg)] text-[var(--text-secondary)]">

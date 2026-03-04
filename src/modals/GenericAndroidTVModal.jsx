@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   X,
   ChevronUp,
@@ -83,6 +84,10 @@ export default function GenericAndroidTVModal({
   }
 
   const picture = getEntityImageUrl(displayEntity?.attributes?.entity_picture);
+  const [pictureFailed, setPictureFailed] = useState(false);
+  useEffect(() => {
+    setPictureFailed(false);
+  }, [picture]);
   const deviceName =
     customNames[mediaPlayerId] || entity?.attributes?.friendly_name || 'Android TV';
 
@@ -173,12 +178,13 @@ export default function GenericAndroidTVModal({
             <div className="popup-surface flex flex-col gap-4 rounded-2xl p-4">
               {/* Album Art / Info Area */}
               <div className="group relative aspect-video w-full overflow-hidden rounded-xl bg-black/20">
-                {picture ? (
+                {picture && !pictureFailed ? (
                   <>
                     <img
                       src={picture}
                       alt={title}
                       className="h-full w-full object-cover opacity-80 transition-opacity duration-500 group-hover:opacity-60"
+                      onError={() => setPictureFailed(true)}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     <div className="absolute right-6 bottom-6 left-6">

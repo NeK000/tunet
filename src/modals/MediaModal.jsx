@@ -90,6 +90,238 @@ const BLOCKED_TITLE_WORDS = [
 
 const MEDIA_VIEW_MODE_KEY = 'tunet_media_view_mode_by_modal';
 
+function inferMediaSourceFromId(value) {
+  const text = String(value || '').toLowerCase();
+  if (!text) return '';
+  if (text.includes('spotify')) return 'Spotify';
+  if (text.includes('music_assistant') || text.includes('mass')) return 'Music Assistant';
+  if (text.includes('sonos')) return 'Sonos';
+  if (text.includes('plex')) return 'Plex';
+  if (text.includes('tidal')) return 'TIDAL';
+  if (text.includes('youtube')) return 'YouTube';
+  if (text.includes('radio')) return 'Radio';
+  return '';
+}
+
+function inferMediaSourceFromObject(obj, value) {
+  const provider =
+    obj?.provider ||
+    obj?.source ||
+    obj?.app_name ||
+    obj?.media_source ||
+    obj?.integration ||
+    obj?.library_name ||
+    obj?.domain;
+  if (provider) return String(provider);
+  return inferMediaSourceFromId(value);
+}
+
+function inferMediaImageFromObject(obj) {
+  return (
+    obj?.thumbnail ||
+    obj?.thumb ||
+    obj?.image ||
+    obj?.icon ||
+    obj?.media_image ||
+    obj?.media_image_url ||
+    null
+  );
+}
+
+function normalizeMediaChoice(item, fallbackType) {
+  if (!item) return null;
+  if (typeof item === 'string') {
+    const value = item.trim();
+    if (!value) return null;
+    return {
+      id: value,
+      label: value,
+      type: fallbackType,
+      source: inferMediaSourceFromId(value),
+      image: null,
+    };
+  }
+  if (typeof item !== 'object') return null;
+
+  const id = item.media_content_id || item.id || item.uri || item.url || item.entity_id || item.value;
+  if (!id || typeof id !== 'string') return null;
+
+  const label = item.title || item.name || item.friendly_name || item.label || id;
+  const type = item.media_content_type || item.type || fallbackType;
+  const source = inferMediaSourceFromObject(item, id);
+  const image = inferMediaImageFromObject(item);
+
+  return { id, label: String(label), type: String(type), source, image };
+}
+
+function normalizeMediaChoiceArray(raw, fallbackType) {
+  const array = Array.isArray(raw) ? raw : [];
+  const deduped = new Map();
+  array.forEach((item) => {
+    const normalized = normalizeMediaChoice(item, fallbackType);
+    if (!normalized) return;
+    const key = `${normalized.type}::${normalized.id}`;
+    if (!deduped.has(key)) deduped.set(key, normalized);
+  });
+  return [...deduped.values()];
+}
+
+function isAllowedMusicContent(item) {
+  if (!item) return false;
+  const type = String(item.media_content_type || item.media_class || item.type || '').toLowerCase();
+  const id = String(item.media_content_id || item.id || item.uri || '').toLowerCase();
+  const title = String(item.title || item.name || '').toLowerCase();
+  if (BLOCKED_MEDIA_TYPES.has(type)) return false;
+  if (BLOCKED_ID_PATTERNS.some((pattern) => id.includes(pattern))) return false;
+  if (BLOCKED_TITLE_WORDS.some((word) => title.includes(word))) return false;
+  return true;
+}
+
+function flattenMediaBrowseChoices(nodes, fallbackType = 'music', sourceHint = '') {
+  const queue = Array.isArray(nodes) ? [...nodes] : [];
+  const result = [];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== 'object') continue;
+    if (!isAllowedMusicContent(current)) continue;
+
+    const nodeType = current.media_content_type || current.media_class || fallbackType;
+    const id = current.media_content_id || current.id || current.uri || current.value;
+    const canPlay = current.can_play !== false;
+    const title = current.title || current.name || id;
+    const source =
+      current.provider ||
+      current.app_name ||
+      current.domain ||
+      current.library_name ||
+      sourceHint ||
+      '';
+    const image = current.thumbnail || current.thumb || current.image || current.icon || null;
+
+    if (id && canPlay) {
+      result.push({
+        id: String(id),
+        label: String(title),
+        type: String(nodeType || fallbackType),
+        source: String(source || ''),
+        image,
+      });
+    }
+
+    if (Array.isArray(current.children) && current.children.length > 0) {
+      queue.push(...current.children);
+    }
+  }
+  return normalizeMediaChoiceArray(result, fallbackType);
+}
+
+function mergeMediaChoiceArrays(...arrays) {
+  return normalizeMediaChoiceArray(arrays.flat(), 'music');
+}
+
+function applyPlayerNameFilter(value, playerNameDisplayFilter) {
+  const name = String(value || '');
+  const patterns = String(playerNameDisplayFilter || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (!name || patterns.length === 0) return name;
+
+  let cleaned = name;
+  let didApply = false;
+  patterns.forEach((pattern) => {
+    const wildcardIndex = pattern.indexOf('*');
+    const prefixCandidate = wildcardIndex >= 0 ? pattern.slice(0, wildcardIndex) : pattern;
+    const prefix = prefixCandidate.trim();
+    if (!prefix) return;
+
+    const escapedPrefix = prefix.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escapedPrefix}`, 'i');
+    if (regex.test(cleaned)) {
+      cleaned = cleaned.replace(regex, '').trim();
+      didApply = true;
+    }
+  });
+
+  return didApply ? cleaned : name;
+}
+
+function isMusicAssistantMediaEntity(entity) {
+  if (!entity) return false;
+  if (entity.attributes?.mass_player_type) return true;
+  const entityId = (entity.entity_id || '').toLowerCase();
+  const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
+  const platform = (entity.attributes?.platform || '').toLowerCase();
+  const integration = (entity.attributes?.integration || '').toLowerCase();
+  const attribution = (entity.attributes?.attribution || '').toLowerCase();
+  const appName = (entity.attributes?.app_name || '').toLowerCase();
+  const mediaContentId = (entity.attributes?.media_content_id || '').toLowerCase();
+  const model = (entity.attributes?.model || '').toLowerCase();
+  return (
+    platform.includes('music_assistant') ||
+    platform === 'mass' ||
+    integration.includes('music_assistant') ||
+    integration === 'mass' ||
+    entityId.includes('music_assistant') ||
+    entityId.includes('mass_') ||
+    friendlyName.includes('music assistant') ||
+    attribution.includes('music assistant') ||
+    appName.includes('music assistant') ||
+    mediaContentId.includes('music_assistant') ||
+    model.includes('music assistant')
+  );
+}
+
+function isStrictSonosMediaEntity(entity) {
+  if (!entity) return false;
+  if (isMusicAssistantMediaEntity(entity)) return false;
+  const manufacturer = (entity.attributes?.manufacturer || '').toLowerCase();
+  const platform = (entity.attributes?.platform || '').toLowerCase();
+  if (manufacturer.includes('sonos') || platform.includes('sonos')) return true;
+
+  const entityId = (entity.entity_id || '').toLowerCase();
+  const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
+  return entityId.includes('sonos') || friendlyName.includes('sonos');
+}
+
+function isSonosUiMediaEntity(entity) {
+  if (!entity) return false;
+  if (isStrictSonosMediaEntity(entity)) return true;
+  const entityId = (entity.entity_id || '').toLowerCase();
+  const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
+  return entityId.includes('sonos') || friendlyName.includes('sonos');
+}
+
+function resolveArtworkUrl(entity, getEntityImageUrl) {
+  const raw =
+    entity?.attributes?.entity_picture ||
+    entity?.attributes?.media_image_url ||
+    entity?.attributes?.media_image ||
+    null;
+  if (!raw) return null;
+  if (typeof getEntityImageUrl === 'function') {
+    return getEntityImageUrl(raw);
+  }
+  if (typeof raw === 'string' && (raw.startsWith('http://') || raw.startsWith('https://'))) {
+    return raw;
+  }
+  return null;
+}
+
+function sanitizeHttpImageSrc(value) {
+  if (typeof value !== 'string') return null;
+  const src = value.trim();
+  if (!src) return null;
+  try {
+    const parsed = new URL(src, window.location.origin);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * MediaModal - Unified media/sonos modal
  *
@@ -174,150 +406,25 @@ export default function MediaModal({
     writeJSON('tunet_media_extra_players', extraSelectedPlayerIds);
   }, [extraSelectedPlayerIds]);
 
-  const inferSourceFromId = useCallback((value) => {
-    const text = String(value || '').toLowerCase();
-    if (!text) return '';
-    if (text.includes('spotify')) return 'Spotify';
-    if (text.includes('music_assistant') || text.includes('mass')) return 'Music Assistant';
-    if (text.includes('sonos')) return 'Sonos';
-    if (text.includes('plex')) return 'Plex';
-    if (text.includes('tidal')) return 'TIDAL';
-    if (text.includes('youtube')) return 'YouTube';
-    if (text.includes('radio')) return 'Radio';
-    return '';
-  }, []);
-
-  const inferSourceFromObject = useCallback(
-    (obj, value) => {
-      const provider =
-        obj?.provider ||
-        obj?.source ||
-        obj?.app_name ||
-        obj?.media_source ||
-        obj?.integration ||
-        obj?.library_name ||
-        obj?.domain;
-      if (provider) return String(provider);
-      return inferSourceFromId(value);
-    },
-    [inferSourceFromId]
-  );
-
-  const inferImageFromObject = useCallback(
-    (obj) =>
-      obj?.thumbnail ||
-      obj?.thumb ||
-      obj?.image ||
-      obj?.icon ||
-      obj?.media_image ||
-      obj?.media_image_url ||
-      null,
+  const normalizeChoice = useCallback(
+    (item, fallbackType) => normalizeMediaChoice(item, fallbackType),
     []
   );
 
-  const normalizeChoice = useCallback(
-    (item, fallbackType) => {
-      if (!item) return null;
-      if (typeof item === 'string') {
-        const value = item.trim();
-        if (!value) return null;
-        return {
-          id: value,
-          label: value,
-          type: fallbackType,
-          source: inferSourceFromId(value),
-          image: null,
-        };
-      }
-      if (typeof item !== 'object') return null;
-
-      const id =
-        item.media_content_id || item.id || item.uri || item.url || item.entity_id || item.value;
-      if (!id || typeof id !== 'string') return null;
-
-      const label = item.title || item.name || item.friendly_name || item.label || id;
-      const type = item.media_content_type || item.type || fallbackType;
-      const source = inferSourceFromObject(item, id);
-      const image = inferImageFromObject(item);
-
-      return { id, label: String(label), type: String(type), source, image };
-    },
-    [inferImageFromObject, inferSourceFromId, inferSourceFromObject]
-  );
-
   const normalizeChoiceArray = useCallback(
-    (raw, fallbackType) => {
-      const array = Array.isArray(raw) ? raw : [];
-      const deduped = new Map();
-      array.forEach((item) => {
-        const normalized = normalizeChoice(item, fallbackType);
-        if (!normalized) return;
-        const key = `${normalized.type}::${normalized.id}`;
-        if (!deduped.has(key)) deduped.set(key, normalized);
-      });
-      return [...deduped.values()];
-    },
-    [normalizeChoice]
+    (raw, fallbackType) => normalizeMediaChoiceArray(raw, fallbackType),
+    []
   );
 
-  const isMusicContent = useCallback((item) => {
-    if (!item) return false;
-    const type = String(
-      item.media_content_type || item.media_class || item.type || ''
-    ).toLowerCase();
-    const id = String(item.media_content_id || item.id || item.uri || '').toLowerCase();
-    const title = String(item.title || item.name || '').toLowerCase();
-    if (BLOCKED_MEDIA_TYPES.has(type)) return false;
-    if (BLOCKED_ID_PATTERNS.some((p) => id.includes(p))) return false;
-    if (BLOCKED_TITLE_WORDS.some((w) => title.includes(w))) return false;
-    return true;
-  }, []);
+  const isMusicContent = useCallback((item) => isAllowedMusicContent(item), []);
 
   const flattenBrowseChoices = useCallback(
-    (nodes, fallbackType = 'music', sourceHint = '') => {
-      const queue = Array.isArray(nodes) ? [...nodes] : [];
-      const result = [];
-      while (queue.length > 0) {
-        const current = queue.shift();
-        if (!current || typeof current !== 'object') continue;
-        if (!isMusicContent(current)) continue;
-
-        const nodeType = current.media_content_type || current.media_class || fallbackType;
-        const id = current.media_content_id || current.id || current.uri || current.value;
-        const canPlay = current.can_play !== false;
-        const title = current.title || current.name || id;
-        const source =
-          current.provider ||
-          current.app_name ||
-          current.domain ||
-          current.library_name ||
-          sourceHint ||
-          '';
-        const image = current.thumbnail || current.thumb || current.image || current.icon || null;
-
-        if (id && canPlay) {
-          result.push({
-            id: String(id),
-            label: String(title),
-            type: String(nodeType || fallbackType),
-            source: String(source || ''),
-            image,
-          });
-        }
-
-        if (Array.isArray(current.children) && current.children.length > 0) {
-          queue.push(...current.children);
-        }
-      }
-      return normalizeChoiceArray(result, fallbackType);
-    },
-    [isMusicContent, normalizeChoiceArray]
+    (nodes, fallbackType = 'music', sourceHint = '') =>
+      flattenMediaBrowseChoices(nodes, fallbackType, sourceHint),
+    []
   );
 
-  const mergeChoiceArrays = useCallback(
-    (...arrays) => normalizeChoiceArray(arrays.flat(), 'music'),
-    [normalizeChoiceArray]
-  );
+  const mergeChoiceArrays = useCallback((...arrays) => mergeMediaChoiceArrays(...arrays), []);
 
   useEffect(() => {
     if (Array.isArray(activeMediaSessionSensorIds)) {
@@ -381,81 +488,13 @@ export default function MediaModal({
   }, [show, persistViewModeForScope, showPlayersSidebar]);
 
   const applyPlayerNameDisplayFilter = useCallback(
-    (value) => {
-      const name = String(value || '');
-      const patterns = String(playerNameDisplayFilter || '')
-        .split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean);
-
-      if (!name || patterns.length === 0) return name;
-
-      let cleaned = name;
-      let didApply = false;
-      patterns.forEach((pattern) => {
-        const wildcardIndex = pattern.indexOf('*');
-        const prefixCandidate = wildcardIndex >= 0 ? pattern.slice(0, wildcardIndex) : pattern;
-        const prefix = prefixCandidate.trim();
-        if (!prefix) return;
-
-        const escapedPrefix = prefix.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`^${escapedPrefix}`, 'i');
-        if (regex.test(cleaned)) {
-          cleaned = cleaned.replace(regex, '').trim();
-          didApply = true;
-        }
-      });
-
-      return didApply ? cleaned : name;
-    },
+    (value) => applyPlayerNameFilter(value, playerNameDisplayFilter),
     [playerNameDisplayFilter]
   );
 
-  const isMusicAssistantEntity = (entity) => {
-    if (!entity) return false;
-    if (entity.attributes?.mass_player_type) return true;
-    const entityId = (entity.entity_id || '').toLowerCase();
-    const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
-    const platform = (entity.attributes?.platform || '').toLowerCase();
-    const integration = (entity.attributes?.integration || '').toLowerCase();
-    const attribution = (entity.attributes?.attribution || '').toLowerCase();
-    const appName = (entity.attributes?.app_name || '').toLowerCase();
-    const mediaContentId = (entity.attributes?.media_content_id || '').toLowerCase();
-    const model = (entity.attributes?.model || '').toLowerCase();
-    return (
-      platform.includes('music_assistant') ||
-      platform === 'mass' ||
-      integration.includes('music_assistant') ||
-      integration === 'mass' ||
-      entityId.includes('music_assistant') ||
-      entityId.includes('mass_') ||
-      friendlyName.includes('music assistant') ||
-      attribution.includes('music assistant') ||
-      appName.includes('music assistant') ||
-      mediaContentId.includes('music_assistant') ||
-      model.includes('music assistant')
-    );
-  };
-
-  const isStrictSonosEntity = (entity) => {
-    if (!entity) return false;
-    if (isMusicAssistantEntity(entity)) return false;
-    const manufacturer = (entity.attributes?.manufacturer || '').toLowerCase();
-    const platform = (entity.attributes?.platform || '').toLowerCase();
-    if (manufacturer.includes('sonos') || platform.includes('sonos')) return true;
-
-    const entityId = (entity.entity_id || '').toLowerCase();
-    const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
-    return entityId.includes('sonos') || friendlyName.includes('sonos');
-  };
-
-  const isSonosUiEntity = (entity) => {
-    if (!entity) return false;
-    if (isStrictSonosEntity(entity)) return true;
-    const entityId = (entity.entity_id || '').toLowerCase();
-    const friendlyName = (entity.attributes?.friendly_name || '').toLowerCase();
-    return entityId.includes('sonos') || friendlyName.includes('sonos');
-  };
+  const isMusicAssistantEntity = isMusicAssistantMediaEntity;
+  const isStrictSonosEntity = isStrictSonosMediaEntity;
+  const isSonosUiEntity = isSonosUiMediaEntity;
 
   const sonosIds = Object.keys(entities)
     .filter((id) => id.startsWith('media_player.'))
@@ -536,35 +575,10 @@ export default function MediaModal({
   const isChannel = contentType === 'channel';
   const isPlaying = mpState === 'playing';
   const getArtworkUrl = useCallback(
-    (entity) => {
-      const raw =
-        entity?.attributes?.entity_picture ||
-        entity?.attributes?.media_image_url ||
-        entity?.attributes?.media_image ||
-        null;
-      if (!raw) return null;
-      if (typeof getEntityImageUrl === 'function') {
-        return getEntityImageUrl(raw);
-      }
-      if (typeof raw === 'string' && (raw.startsWith('http://') || raw.startsWith('https://'))) {
-        return raw;
-      }
-      return null;
-    },
+    (entity) => resolveArtworkUrl(entity, getEntityImageUrl),
     [getEntityImageUrl]
   );
-  const sanitizeImageSrc = useCallback((value) => {
-    if (typeof value !== 'string') return null;
-    const src = value.trim();
-    if (!src) return null;
-    try {
-      const parsed = new URL(src, window.location.origin);
-      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
-      return parsed.toString();
-    } catch {
-      return null;
-    }
-  }, []);
+  const sanitizeImageSrc = useCallback((value) => sanitizeHttpImageSrc(value), []);
   const currentArtworkUrl = getArtworkUrl(currentMp);
   const safeCurrentArtworkUrl = sanitizeImageSrc(currentArtworkUrl);
   const markImageFailed = useCallback((src) => {

@@ -111,11 +111,22 @@ export default function ConfigModal({
   const [runningVersion, setRunningVersion] = useState(SETTINGS_STATIC_VERSION);
   const [installingIds, setInstallingIds] = useState({});
   const [expandedNotes, setExpandedNotes] = useState({});
+  const [failedImageMap, setFailedImageMap] = useState({});
   const [layoutPreview, setLayoutPreview] = useState(false);
   const [maxGridColumns, setMaxGridColumns] = useState(() => {
     if (globalThis.window === undefined) return MAX_GRID_COLUMNS;
     return getMaxGridColumnsForWidth(globalThis.window.innerWidth);
   });
+
+  const markImageFailed = (src) => {
+    if (!src) return;
+    setFailedImageMap((prev) => {
+      if (prev[src]) return prev;
+      return { ...prev, [src]: true };
+    });
+  };
+
+  const isImageAvailable = (src) => Boolean(src) && !failedImageMap[src];
   const selectableMaxGridColumns = dynamicGridColumns
     ? Math.min(maxGridColumns, 4)
     : maxGridColumns;
@@ -1656,6 +1667,7 @@ export default function ConfigModal({
           const entityPicture = update.attributes?.entity_picture
             ? getEntityImageUrl(update.attributes.entity_picture)
             : null;
+          const entityPictureAvailable = isImageAvailable(entityPicture);
           const isInstalling = installingIds[update.entity_id];
           const hasNotes = !!(update.attributes?.release_summary || update.attributes?.release_url);
           const isExpanded = expandedNotes[update.entity_id];
@@ -1668,8 +1680,13 @@ export default function ConfigModal({
               <div className="p-4">
                 <div className="flex items-center gap-4">
                   <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-hover)] p-1.5">
-                    {entityPicture ? (
-                      <img src={entityPicture} alt="" className="h-full w-full object-contain" />
+                    {entityPictureAvailable ? (
+                      <img
+                        src={entityPicture}
+                        alt=""
+                        className="h-full w-full object-contain"
+                        onError={() => markImageFailed(entityPicture)}
+                      />
                     ) : (
                       <Download className="h-5 w-5 text-[var(--accent-color)]" />
                     )}

@@ -48,9 +48,20 @@ export default function RoomModal({
   t,
 }) {
   const [selectedClimateId, setSelectedClimateId] = useState(settings?.climateEntityId || null);
+  const [failedImageMap, setFailedImageMap] = useState({});
   const { unitsMode } = useConfig();
   const { haConfig } = useHomeAssistantMeta();
   const effectiveUnitMode = getEffectiveUnitMode(unitsMode, haConfig);
+
+  const markImageFailed = (src) => {
+    if (!src) return;
+    setFailedImageMap((prev) => {
+      if (prev[src]) return prev;
+      return { ...prev, [src]: true };
+    });
+  };
+
+  const isImageAvailable = (src) => Boolean(src) && !failedImageMap[src];
 
   const areaName = settings?.areaName || t('room.defaultName');
   const collapseStorageKey = useMemo(() => {
@@ -463,6 +474,7 @@ export default function RoomModal({
               const cover = getEntityImageUrl?.(
                 entity.attributes?.entity_picture || entity.attributes?.media_image_url
               );
+              const coverAvailable = isImageAvailable(cover);
               const isPlaying = entity.state === 'playing';
               return (
                 <div
@@ -470,8 +482,13 @@ export default function RoomModal({
                   className="flex items-center gap-3 rounded-xl bg-[var(--glass-bg)]/40 px-3 py-2.5"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--glass-bg)]">
-                    {cover ? (
-                      <img src={cover} alt="Cover" className="h-full w-full object-cover" />
+                    {coverAvailable ? (
+                      <img
+                        src={cover}
+                        alt="Cover"
+                        className="h-full w-full object-cover"
+                        onError={() => markImageFailed(cover)}
+                      />
                     ) : (
                       <Tv className="h-5 w-5 text-[var(--text-secondary)]" />
                     )}
@@ -845,17 +862,19 @@ export default function RoomModal({
                       const isCleaning = entity.state === 'cleaning';
                       const battery = entity.attributes?.battery_level;
                       const picture = getEntityImageUrl?.(entity.attributes?.entity_picture);
+                      const pictureAvailable = isImageAvailable(picture);
                       return (
                         <div
                           key={id}
                           className="relative overflow-hidden rounded-xl bg-[var(--glass-bg)]/70 px-3 py-2.5"
                         >
-                          {picture && (
+                          {pictureAvailable && (
                             <>
                               <img
                                 src={picture}
                                 alt=""
                                 className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-15 blur-lg"
+                                onError={() => markImageFailed(picture)}
                               />
                               <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/25 to-black/5" />
                             </>
@@ -863,8 +882,13 @@ export default function RoomModal({
 
                           <div className="relative z-10 flex items-center gap-3">
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--glass-bg)]">
-                              {picture ? (
-                                <img src={picture} alt="" className="h-full w-full object-cover" />
+                              {pictureAvailable ? (
+                                <img
+                                  src={picture}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  onError={() => markImageFailed(picture)}
+                                />
                               ) : (
                                 <Bot className="h-5 w-5 text-[var(--text-secondary)]" />
                               )}

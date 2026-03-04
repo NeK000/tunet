@@ -80,6 +80,7 @@ export default function MediaPage({
   activeMediaId,
   setActiveMediaId,
   getA,
+  getEntityImageUrl,
   callService,
   savePageSetting,
   formatDuration,
@@ -96,6 +97,7 @@ export default function MediaPage({
   const [browseChoicesByPlayer, setBrowseChoicesByPlayer] = useState({});
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState('');
+  const [failedImageMap, setFailedImageMap] = useState({});
   const isSonosMode = mode === 'sonos';
   const pageSetting = pageSettings[pageId] || {};
   const allMediaIds = Object.keys(entities)
@@ -133,6 +135,34 @@ export default function MediaPage({
   const isTV = mpId
     ? getA(mpId, 'media_content_type') === 'channel' || getA(mpId, 'device_class') === 'tv'
     : false;
+
+  const resolveMediaImageUrl = useCallback(
+    (rawUrl) => {
+      if (!rawUrl) return null;
+      if (typeof getEntityImageUrl === 'function') {
+        return getEntityImageUrl(rawUrl) || rawUrl;
+      }
+      return rawUrl;
+    },
+    [getEntityImageUrl]
+  );
+
+  const currentArtworkUrl = resolveMediaImageUrl(
+    currentMp?.attributes?.entity_picture ||
+      currentMp?.attributes?.media_image_url ||
+      currentMp?.attributes?.media_image
+  );
+  const markImageFailed = useCallback((src) => {
+    if (!src) return;
+    setFailedImageMap((prev) => {
+      if (prev[src]) return prev;
+      return { ...prev, [src]: true };
+    });
+  }, []);
+  const isImageAvailable = useCallback(
+    (src) => Boolean(src) && !failedImageMap[src],
+    [failedImageMap]
+  );
   const powerAction = currentMp ? getMediaPlayerPowerAction(currentMp) : null;
   const canTogglePower = Boolean(powerAction);
   const isPowerOffAction = powerAction === 'turn_off';
@@ -598,6 +628,9 @@ export default function MediaPage({
   };
 
   const renderChoiceTile = (choice, fallbackType = 'music') => (
+    (() => {
+      const choiceImageUrl = resolveMediaImageUrl(choice.image);
+      return (
     <button
       key={`${choice.type}::${choice.id}`}
       type="button"
@@ -605,12 +638,13 @@ export default function MediaPage({
       className="group flex flex-col items-center gap-2 rounded-xl p-2 transition-colors hover:bg-[var(--glass-bg-hover)]"
     >
       <div className="aspect-square w-full flex-shrink-0 overflow-hidden rounded-lg bg-[var(--glass-bg-hover)]">
-        {choice.image ? (
+        {isImageAvailable(choiceImageUrl) ? (
           <img
-            src={choice.image}
+            src={choiceImageUrl}
             alt={choice.label}
             className="h-full w-full object-cover"
             loading="lazy"
+            onError={() => markImageFailed(choiceImageUrl)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
@@ -622,6 +656,8 @@ export default function MediaPage({
         {choice.label}
       </p>
     </button>
+      );
+    })()
   );
 
   return (
@@ -768,7 +804,15 @@ export default function MediaPage({
             <div className="flex flex-1 flex-col items-center gap-8 md:flex-row md:gap-12">
               <div className="flex flex-shrink-0 justify-center md:justify-start">
                 <div className="flex h-52 w-52 items-center justify-center rounded-2xl bg-[var(--glass-bg)] lg:h-56 lg:w-56 xl:h-72 xl:w-72">
-                  {isTV ? (
+                  {isImageAvailable(currentArtworkUrl) ? (
+                    <img
+                      src={currentArtworkUrl}
+                      alt={mpTitle || mpName || 'Media artwork'}
+                      className="h-full w-full rounded-2xl object-cover"
+                      loading="lazy"
+                      onError={() => markImageFailed(currentArtworkUrl)}
+                    />
+                  ) : isTV ? (
                     <Tv className="h-24 w-24 text-gray-700" />
                   ) : (
                     <Speaker className="h-24 w-24 text-gray-700" />
@@ -1052,6 +1096,11 @@ export default function MediaPage({
                       const isSonos = isSonosMediaEntity(p);
                       const isActivePlayer = isSonos ? isSonosActive(p) : p?.state === 'playing';
                       const pTitle = getA(p.entity_id, 'media_title', t('common.unknown'));
+                      const pArtworkUrl = resolveMediaImageUrl(
+                        p?.attributes?.entity_picture ||
+                          p?.attributes?.media_image_url ||
+                          p?.attributes?.media_image
+                      );
 
                       return (
                         <div
@@ -1066,9 +1115,19 @@ export default function MediaPage({
                             className="group flex min-w-0 flex-1 items-center gap-4 text-left"
                           >
                             <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--glass-bg)]">
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Speaker className="h-5 w-5 text-gray-600" />
-                              </div>
+                              {isImageAvailable(pArtworkUrl) ? (
+                                <img
+                                  src={pArtworkUrl}
+                                  alt={p.attributes?.friendly_name || p.entity_id}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                  onError={() => markImageFailed(pArtworkUrl)}
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <Speaker className="h-5 w-5 text-gray-600" />
+                                </div>
+                              )}
                               {p.state === 'playing' && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                                   <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />

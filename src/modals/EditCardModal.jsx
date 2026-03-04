@@ -185,6 +185,534 @@ function GraphLimitsSlider({ values, onChange, min = -15, max = 35 }) {
   );
 }
 
+function getVacuumSensorOptions({ entityId, entities, byDomain, sortByName, registryVacuumSensorIds, editSettings }) {
+  const isVacuumCard = typeof entityId === 'string' && entityId.startsWith('vacuum.');
+  const allSensors = sortByName(byDomain('sensor'));
+  if (!isVacuumCard) return allSensors;
+
+  const registryFiltered = registryVacuumSensorIds.filter((sensorId) => allSensors.includes(sensorId));
+
+  const mappedSensorIds = [
+    editSettings?.batterySensorId,
+    editSettings?.currentRoomSensorId,
+    editSettings?.cleaningTimeSensorId,
+    editSettings?.cleanedAreaSensorId,
+    editSettings?.totalCleanTimeSensorId,
+    editSettings?.totalCleanAreaSensorId,
+    editSettings?.totalCleanCountSensorId,
+    editSettings?.lastCleanStartSensorId,
+    editSettings?.lastCleanEndSensorId,
+  ].filter(Boolean);
+
+  if (registryFiltered.length > 0) {
+    return sortByName(Array.from(new Set([...registryFiltered, ...mappedSensorIds])));
+  }
+
+  const vacuumFriendlyName = (entities?.[entityId]?.attributes?.friendly_name || '').toLowerCase();
+  const vacuumIdPart = entityId.slice('vacuum.'.length).toLowerCase();
+  const vacuumTokens = Array.from(
+    new Set(
+      [...vacuumIdPart.split(/[_\-\s]+/), ...vacuumFriendlyName.split(/[_\-\s]+/)]
+        .filter((token) => token.length > 2)
+        .filter((token) => !['vacuum', 'robot', 'cleaner'].includes(token))
+    )
+  );
+
+  const related = allSensors.filter((sensorId) => {
+    const lowerId = sensorId.toLowerCase();
+    const friendly = (entities?.[sensorId]?.attributes?.friendly_name || '').toLowerCase();
+
+    if (vacuumIdPart && lowerId.includes(vacuumIdPart)) return true;
+    if (vacuumFriendlyName && friendly.includes(vacuumFriendlyName)) return true;
+    return vacuumTokens.some((token) => lowerId.includes(token) || friendly.includes(token));
+  });
+
+  const merged = Array.from(new Set([...related, ...mappedSensorIds]));
+  return merged.length > 0 ? sortByName(merged) : allSensors;
+}
+
+function useCarAutoMapping({
+  editSettingsKey,
+  editSettings,
+  entities,
+  saveCardSetting,
+  carMatch,
+  carAnchorOptions,
+  carAnchorEntityId,
+  conn,
+}) {
+  const autoPickCarAnchor = React.useCallback(() => {
+    if (!editSettingsKey) return null;
+
+    const preferredExistingKeys = [
+      'batteryId',
+      'rangeId',
+      'locationId',
+      'chargingId',
+      'climateId',
+      'lockId',
+      'updateButtonId',
+    ];
+    for (const key of preferredExistingKeys) {
+      const candidate = editSettings?.[key];
+      if (candidate && entities[candidate]) {
+        saveCardSetting(editSettingsKey, 'carAnchorEntityId', candidate);
+        return candidate;
+      }
+    }
+
+    const suggestedPriority = [
+      carMatch?.suggested?.locationId,
+      carMatch?.suggested?.batteryId,
+      carMatch?.suggested?.rangeId,
+      carMatch?.suggested?.chargingStateId,
+      carMatch?.suggested?.climateId,
+      carMatch?.suggested?.lockId,
+      carMatch?.suggested?.updateButtonId,
+    ].filter(Boolean);
+
+    const pickedSuggested = suggestedPriority.find((id) => entities[id]);
+    const fallback = carAnchorOptions[0] || null;
+    const chosen = pickedSuggested || fallback;
+    saveCardSetting(editSettingsKey, 'carAnchorEntityId', chosen || null);
+    return chosen;
+  }, [editSettingsKey, editSettings, entities, saveCardSetting, carMatch, carAnchorOptions]);
+
+  const autoMapCarFromAnchor = React.useCallback(
+    async (requestedAnchorId) => {
+      if (!editSettingsKey) return;
+
+      const anchorId = requestedAnchorId || carAnchorEntityId || autoPickCarAnchor();
+
+      let scopedMatch = carMatch;
+      let relatedEntityIds = [];
+      if (anchorId && conn && entities[anchorId]) {
+        try {
+          relatedEntityIds = await getRelatedEntityIds(conn, anchorId);
+          const scopedEntities = {};
+          for (const relatedId of relatedEntityIds || []) {
+            if (entities[relatedId]) scopedEntities[relatedId] = entities[relatedId];
+          }
+          if (entities[anchorId]) scopedEntities[anchorId] = entities[anchorId];
+          if (Object.keys(scopedEntities).length > 0) {
+            scopedMatch = matchCarEntities(scopedEntities);
+          }
+        } catch {
+          scopedMatch = carMatch;
+        }
+      }
+
+      const suggestions = scopedMatch?.suggested || {};
+      const relatedIdsSet = new Set(
+        (Array.isArray(relatedEntityIds) ? relatedEntityIds : []).filter((id) => entities[id])
+      );
+      if (anchorId && entities[anchorId]) relatedIdsSet.add(anchorId);
+
+      const pickFirstRelated = (predicate) => {
+        const ids = relatedIdsSet.size > 0 ? Array.from(relatedIdsSet) : Object.keys(entities || {});
+        return (
+          ids.find((id) => {
+            const entity = entities[id];
+            if (!entity) return false;
+            return predicate(id, entity);
+          }) || null
+        );
+      };
+
+      const hasKeyword = (id, entity, words) => {
+        const text = `${id} ${entity?.attributes?.friendly_name || ''}`.toLowerCase();
+        return words.some((word) => text.includes(word));
+      };
+
+      const fallbackSuggestions = {
+        batteryId: pickFirstRelated((id, entity) => {
+          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
+          const deviceClass = String(entity?.attributes?.device_class || '').toLowerCase();
+          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
+          return (
+            deviceClass === 'battery' ||
+            (unit === '%' && hasKeyword(id, entity, ['battery', 'soc', 'charge']))
+          );
+        }),
+        rangeId: pickFirstRelated((id, entity) => {
+          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
+          const deviceClass = String(entity?.attributes?.device_class || '').toLowerCase();
+          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
+          return (
+            deviceClass === 'distance' ||
+            ['km', 'mi', 'm'].includes(unit) ||
+            hasKeyword(id, entity, ['range', 'distance'])
+          );
+        }),
+        odometerId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
+            hasKeyword(id, entity, ['odometer', 'mileage', 'odo'])
+        ),
+        fuelLevelId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
+            hasKeyword(id, entity, ['fuel', 'tank'])
+        ),
+        locationId: pickFirstRelated((id) => id.startsWith('device_tracker.')),
+        latitudeId: pickFirstRelated((id, entity) => {
+          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
+          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
+          return dc === 'latitude' || hasKeyword(id, entity, ['latitude', 'lat']);
+        }),
+        longitudeId: pickFirstRelated((id, entity) => {
+          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
+          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
+          return dc === 'longitude' || hasKeyword(id, entity, ['longitude', 'lon', 'lng']);
+        }),
+        chargingStateId: pickFirstRelated((id, entity) => {
+          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
+          return (
+            id.startsWith('binary_sensor.') &&
+            (dc === 'battery_charging' || hasKeyword(id, entity, ['charging', 'charger', 'charge']))
+          );
+        }),
+        pluggedId: pickFirstRelated((id, entity) => {
+          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
+          return (
+            id.startsWith('binary_sensor.') &&
+            (dc === 'plug' || hasKeyword(id, entity, ['plug', 'connected']))
+          );
+        }),
+        chargingPowerId: pickFirstRelated((id, entity) => {
+          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
+          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
+          return ['kw', 'w'].includes(unit) && hasKeyword(id, entity, ['charge', 'charging', 'power']);
+        }),
+        chargeRateId: pickFirstRelated((id, entity) => {
+          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
+          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
+          return ['km/h', 'mi/h', 'mph'].includes(unit) || hasKeyword(id, entity, ['rate']);
+        }),
+        timeToFullId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
+            hasKeyword(id, entity, ['time_to_full', 'time to full', 'remaining_time'])
+        ),
+        chargeEndTimeId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
+            hasKeyword(id, entity, ['charge_end', 'ready_by', 'end_time'])
+        ),
+        climateId: pickFirstRelated((id) => id.startsWith('climate.')),
+        lockId: pickFirstRelated((id) => id.startsWith('lock.')),
+        ignitionSwitchId: pickFirstRelated(
+          (id, entity) =>
+            id.startsWith('switch.') && hasKeyword(id, entity, ['ignition', 'engine', 'vehicle_on'])
+        ),
+        engineStatusId: pickFirstRelated(
+          (id, entity) =>
+            id.startsWith('binary_sensor.') && hasKeyword(id, entity, ['engine', 'ignition', 'motor'])
+        ),
+        lastUpdatedId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
+            hasKeyword(id, entity, ['last_update', 'updated'])
+        ),
+        apiStatusId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('sensor.') || id.startsWith('binary_sensor.')) &&
+            hasKeyword(id, entity, ['api_status', 'service_status', 'vehicle_status'])
+        ),
+        chargeLimitNumberId: pickFirstRelated(
+          (id, entity) =>
+            id.startsWith('number.') && hasKeyword(id, entity, ['charge_limit', 'soc limit'])
+        ),
+        chargeLimitSelectId: pickFirstRelated(
+          (id, entity) =>
+            (id.startsWith('select.') || id.startsWith('input_select.')) &&
+            hasKeyword(id, entity, ['charge_limit', 'soc limit'])
+        ),
+        updateButtonId: pickFirstRelated(
+          (id, entity) => id.startsWith('button.') && hasKeyword(id, entity, ['update', 'refresh', 'poll'])
+        ),
+      };
+
+      const fieldKeys = [
+        'batteryId',
+        'rangeId',
+        'odometerId',
+        'fuelLevelId',
+        'locationId',
+        'latitudeId',
+        'longitudeId',
+        'chargingId',
+        'pluggedId',
+        'chargingPowerId',
+        'chargeRateId',
+        'timeToFullId',
+        'chargeEndTimeId',
+        'climateId',
+        'lockId',
+        'ignitionSwitchId',
+        'engineStatusId',
+        'lastUpdatedId',
+        'apiStatusId',
+        'chargeLimitNumberId',
+        'chargeLimitSelectId',
+        'updateButtonId',
+      ];
+
+      fieldKeys.forEach((key) => {
+        if (editSettings?.[key]) return;
+        const suggested =
+          suggestions[key] ||
+          (key === 'chargingId' ? suggestions.chargingStateId : null) ||
+          fallbackSuggestions[key] ||
+          (key === 'chargingId' ? fallbackSuggestions.chargingStateId : null);
+        if (suggested && entities[suggested]) {
+          saveCardSetting(editSettingsKey, key, suggested);
+        }
+      });
+
+      if (!editSettings?.chargeControlId && Array.isArray(scopedMatch?.chargeControlIds)) {
+        const firstChargeControl = scopedMatch.chargeControlIds.find((id) => entities[id]);
+        if (firstChargeControl) {
+          saveCardSetting(editSettingsKey, 'chargeControlId', firstChargeControl);
+        }
+      }
+    },
+    [
+      editSettingsKey,
+      carAnchorEntityId,
+      autoPickCarAnchor,
+      carMatch,
+      conn,
+      entities,
+      editSettings,
+      saveCardSetting,
+    ]
+  );
+
+  return { autoPickCarAnchor, autoMapCarFromAnchor };
+}
+
+function VisibilityConditionSection({
+  t,
+  visibilityEnabled,
+  showVisibilityLogic,
+  setShowVisibilityLogic,
+  toggleVisibilityCondition,
+  entityId,
+  editSettings,
+  visibilityCondition,
+  entities,
+  editSettingsKey,
+  saveCardSetting,
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="popup-surface rounded-2xl border border-[var(--glass-border)]/50 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (!visibilityEnabled) return;
+              setShowVisibilityLogic((prev) => !prev);
+            }}
+            className={`flex-1 text-left ${visibilityEnabled ? 'cursor-pointer' : 'cursor-default'}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold tracking-widest text-[var(--text-primary)] uppercase">
+                  {t('visibility.title') || 'Conditional visibility'}
+                </p>
+                <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
+                  {t('visibility.description') || 'Show this card only when the rule matches.'}
+                </p>
+              </div>
+              <span
+                className={`mt-0.5 transition-colors ${visibilityEnabled ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]/60'}`}
+              >
+                {showVisibilityLogic ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={toggleVisibilityCondition}
+            className={`relative h-6 w-12 rounded-full transition-colors ${visibilityEnabled ? 'bg-[var(--accent-color)]' : 'bg-gray-600'}`}
+          >
+            <span
+              className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${visibilityEnabled ? 'translate-x-6' : 'translate-x-0'}`}
+            />
+          </button>
+        </div>
+
+        {visibilityEnabled && showVisibilityLogic && (
+          <div className="mt-3 border-t border-[var(--glass-border)]/40 pt-3">
+            <ConditionBuilder
+              cardId={entityId}
+              cardSettings={editSettings}
+              condition={visibilityCondition}
+              entities={entities}
+              onChange={(nextCondition) =>
+                saveCardSetting(editSettingsKey, 'visibilityCondition', nextCondition)
+              }
+              t={t}
+              showHeader={false}
+              showEnableToggle={false}
+              forceEnabled
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PopupTriggerSection({
+  t,
+  popupTriggerEnabled,
+  showPopupLogic,
+  setShowPopupLogic,
+  savePopupTrigger,
+  popupTriggerCondition,
+  popupTriggerCooldownSeconds,
+  popupTriggerAutoCloseSeconds,
+  entityId,
+  editSettings,
+  entities,
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="popup-surface rounded-2xl border border-[var(--glass-border)]/50 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (!popupTriggerEnabled) return;
+              setShowPopupLogic((prev) => !prev);
+            }}
+            className={`flex-1 text-left ${popupTriggerEnabled ? 'cursor-pointer' : 'cursor-default'}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold tracking-widest text-[var(--text-primary)] uppercase">
+                  {t('popupTrigger.title') || 'Popup trigger'}
+                </p>
+                <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
+                  {t('popupTrigger.description') ||
+                    'Open this card popup automatically when the rule transitions from false to true.'}
+                </p>
+              </div>
+              <span
+                className={`mt-0.5 transition-colors ${popupTriggerEnabled ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]/60'}`}
+              >
+                {showPopupLogic ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const nextEnabled = !popupTriggerEnabled;
+              savePopupTrigger(
+                nextEnabled,
+                popupTriggerCondition,
+                popupTriggerCooldownSeconds,
+                popupTriggerAutoCloseSeconds
+              );
+              setShowPopupLogic(nextEnabled);
+            }}
+            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${popupTriggerEnabled ? 'bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'}`}
+          >
+            {popupTriggerEnabled
+              ? `✓ ${t('popupTrigger.enabled') || 'Enabled'}`
+              : t('popupTrigger.enable') || 'Enable'}
+          </button>
+        </div>
+
+        {popupTriggerEnabled && (
+          <div className="mt-3 space-y-1">
+            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">
+              {t('popupTrigger.cooldownSeconds') || 'Cooldown (seconds)'}
+            </label>
+            <input
+              type="number"
+              min={MIN_POPUP_TRIGGER_COOLDOWN_SECONDS}
+              max={MAX_POPUP_TRIGGER_COOLDOWN_SECONDS}
+              value={popupTriggerCooldownSeconds}
+              onChange={(e) =>
+                savePopupTrigger(
+                  popupTriggerEnabled,
+                  popupTriggerCondition,
+                  e.target.value,
+                  popupTriggerAutoCloseSeconds
+                )
+              }
+              className="w-full rounded-xl border-0 bg-[var(--glass-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+            />
+            <p className="text-[10px] text-[var(--text-muted)]">
+              {t('popupTrigger.cooldownHint') ||
+                'Minimum 10 seconds between automatic popup opens for this trigger.'}
+            </p>
+
+            <label className="pt-1 text-[10px] font-bold text-[var(--text-muted)] uppercase">
+              {t('popupTrigger.autoCloseSeconds') || 'Auto-close (seconds)'}
+            </label>
+            <input
+              type="number"
+              min={MIN_POPUP_TRIGGER_AUTO_CLOSE_SECONDS}
+              max={MAX_POPUP_TRIGGER_AUTO_CLOSE_SECONDS}
+              value={popupTriggerAutoCloseSeconds}
+              onChange={(e) =>
+                savePopupTrigger(
+                  popupTriggerEnabled,
+                  popupTriggerCondition,
+                  popupTriggerCooldownSeconds,
+                  e.target.value
+                )
+              }
+              className="w-full rounded-xl border-0 bg-[var(--glass-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+            />
+            <p className="text-[10px] text-[var(--text-muted)]">
+              {t('popupTrigger.autoCloseHint') ||
+                'Optional: auto-close popup after X seconds when opened by trigger. Set 0 to disable.'}
+            </p>
+          </div>
+        )}
+
+        {popupTriggerEnabled && showPopupLogic && (
+          <div className="mt-3 border-t border-[var(--glass-border)]/40 pt-3">
+            <ConditionBuilder
+              cardId={entityId}
+              cardSettings={editSettings}
+              condition={popupTriggerCondition}
+              entities={entities}
+              onChange={(nextCondition) =>
+                savePopupTrigger(
+                  true,
+                  nextCondition,
+                  popupTriggerCooldownSeconds,
+                  popupTriggerAutoCloseSeconds
+                )
+              }
+              t={t}
+              showHeader={false}
+              showEnableToggle={false}
+              forceEnabled
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function EditCardModal({
   isOpen,
   onClose,
@@ -320,56 +848,14 @@ export default function EditCardModal({
   const calendarOptions = sortByName(byDomain('calendar'));
   const todoOptions = sortByName(byDomain('todo'));
   const scriptOptions = sortByName(byDomain('script'));
-  const vacuumSensorOptions = (() => {
-    const isVacuumCard = typeof entityId === 'string' && entityId.startsWith('vacuum.');
-    const allSensors = sortByName(byDomain('sensor'));
-    if (!isVacuumCard) return allSensors;
-
-    const registryFiltered = registryVacuumSensorIds.filter((sensorId) =>
-      allSensors.includes(sensorId)
-    );
-
-    const mappedSensorIds = [
-      editSettings?.batterySensorId,
-      editSettings?.currentRoomSensorId,
-      editSettings?.cleaningTimeSensorId,
-      editSettings?.cleanedAreaSensorId,
-      editSettings?.totalCleanTimeSensorId,
-      editSettings?.totalCleanAreaSensorId,
-      editSettings?.totalCleanCountSensorId,
-      editSettings?.lastCleanStartSensorId,
-      editSettings?.lastCleanEndSensorId,
-    ].filter(Boolean);
-
-    if (registryFiltered.length > 0) {
-      return sortByName(Array.from(new Set([...registryFiltered, ...mappedSensorIds])));
-    }
-
-    const vacuumFriendlyName = (entities?.[entityId]?.attributes?.friendly_name || '').toLowerCase();
-    const vacuumIdPart = entityId.slice('vacuum.'.length).toLowerCase();
-    const vacuumTokens = Array.from(
-      new Set(
-        [
-          ...vacuumIdPart.split(/[_\-\s]+/),
-          ...vacuumFriendlyName.split(/[_\-\s]+/),
-        ]
-          .filter((token) => token.length > 2)
-          .filter((token) => !['vacuum', 'robot', 'cleaner'].includes(token))
-      )
-    );
-
-    const related = allSensors.filter((sensorId) => {
-      const lowerId = sensorId.toLowerCase();
-      const friendly = (entities?.[sensorId]?.attributes?.friendly_name || '').toLowerCase();
-
-      if (vacuumIdPart && lowerId.includes(vacuumIdPart)) return true;
-      if (vacuumFriendlyName && friendly.includes(vacuumFriendlyName)) return true;
-      return vacuumTokens.some((token) => lowerId.includes(token) || friendly.includes(token));
-    });
-
-    const merged = Array.from(new Set([...related, ...mappedSensorIds]));
-    return merged.length > 0 ? sortByName(merged) : allSensors;
-  })();
+  const vacuumSensorOptions = getVacuumSensorOptions({
+    entityId,
+    entities,
+    byDomain,
+    sortByName,
+    registryVacuumSensorIds,
+    editSettings,
+  });
   const mediaPlayerOptions = sortByName(byDomain('media_player'));
 
   const lastUpdatedOptions = carMatch.options?.lastUpdatedId || [];
@@ -426,243 +912,16 @@ export default function EditCardModal({
 
   const carAnchorEntityId = editSettings?.carAnchorEntityId || null;
 
-  const autoPickCarAnchor = React.useCallback(() => {
-    if (!editSettingsKey) return null;
-
-    const preferredExistingKeys = [
-      'batteryId',
-      'rangeId',
-      'locationId',
-      'chargingId',
-      'climateId',
-      'lockId',
-      'updateButtonId',
-    ];
-    for (const key of preferredExistingKeys) {
-      const candidate = editSettings?.[key];
-      if (candidate && entities[candidate]) {
-        saveCardSetting(editSettingsKey, 'carAnchorEntityId', candidate);
-        return candidate;
-      }
-    }
-
-    const suggestedPriority = [
-      carMatch?.suggested?.locationId,
-      carMatch?.suggested?.batteryId,
-      carMatch?.suggested?.rangeId,
-      carMatch?.suggested?.chargingStateId,
-      carMatch?.suggested?.climateId,
-      carMatch?.suggested?.lockId,
-      carMatch?.suggested?.updateButtonId,
-    ].filter(Boolean);
-
-    const pickedSuggested = suggestedPriority.find((id) => entities[id]);
-    const fallback = carAnchorOptions[0] || null;
-    const chosen = pickedSuggested || fallback;
-    saveCardSetting(editSettingsKey, 'carAnchorEntityId', chosen || null);
-    return chosen;
-  }, [editSettingsKey, editSettings, entities, saveCardSetting, carMatch, carAnchorOptions]);
-
-  const autoMapCarFromAnchor = React.useCallback(
-    async (requestedAnchorId) => {
-      if (!editSettingsKey) return;
-
-      const anchorId = requestedAnchorId || carAnchorEntityId || autoPickCarAnchor();
-
-      let scopedMatch = carMatch;
-      let relatedEntityIds = [];
-      if (anchorId && conn && entities[anchorId]) {
-        try {
-          relatedEntityIds = await getRelatedEntityIds(conn, anchorId);
-          const scopedEntities = {};
-          for (const relatedId of relatedEntityIds || []) {
-            if (entities[relatedId]) scopedEntities[relatedId] = entities[relatedId];
-          }
-          if (entities[anchorId]) scopedEntities[anchorId] = entities[anchorId];
-          if (Object.keys(scopedEntities).length > 0) {
-            scopedMatch = matchCarEntities(scopedEntities);
-          }
-        } catch {
-          scopedMatch = carMatch;
-        }
-      }
-
-      const suggestions = scopedMatch?.suggested || {};
-      const relatedIdsSet = new Set(
-        (Array.isArray(relatedEntityIds) ? relatedEntityIds : []).filter((id) => entities[id])
-      );
-      if (anchorId && entities[anchorId]) relatedIdsSet.add(anchorId);
-
-      const pickFirstRelated = (predicate) => {
-        const ids = relatedIdsSet.size > 0 ? Array.from(relatedIdsSet) : Object.keys(entities || {});
-        return (
-          ids.find((id) => {
-            const entity = entities[id];
-            if (!entity) return false;
-            return predicate(id, entity);
-          }) || null
-        );
-      };
-
-      const hasKeyword = (id, entity, words) => {
-        const text = `${id} ${entity?.attributes?.friendly_name || ''}`.toLowerCase();
-        return words.some((word) => text.includes(word));
-      };
-
-      const fallbackSuggestions = {
-        batteryId: pickFirstRelated((id, entity) => {
-          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
-          const deviceClass = String(entity?.attributes?.device_class || '').toLowerCase();
-          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
-          return (
-            deviceClass === 'battery' ||
-            (unit === '%' && hasKeyword(id, entity, ['battery', 'soc', 'charge']))
-          );
-        }),
-        rangeId: pickFirstRelated((id, entity) => {
-          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
-          const deviceClass = String(entity?.attributes?.device_class || '').toLowerCase();
-          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
-          return (
-            deviceClass === 'distance' ||
-            ['km', 'mi', 'm'].includes(unit) ||
-            hasKeyword(id, entity, ['range', 'distance'])
-          );
-        }),
-        odometerId: pickFirstRelated((id, entity) =>
-          (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
-          hasKeyword(id, entity, ['odometer', 'mileage', 'odo'])
-        ),
-        fuelLevelId: pickFirstRelated((id, entity) =>
-          (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
-          hasKeyword(id, entity, ['fuel', 'tank'])
-        ),
-        locationId: pickFirstRelated((id) => id.startsWith('device_tracker.')),
-        latitudeId: pickFirstRelated((id, entity) => {
-          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
-          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
-          return dc === 'latitude' || hasKeyword(id, entity, ['latitude', 'lat']);
-        }),
-        longitudeId: pickFirstRelated((id, entity) => {
-          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
-          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
-          return dc === 'longitude' || hasKeyword(id, entity, ['longitude', 'lon', 'lng']);
-        }),
-        chargingStateId: pickFirstRelated((id, entity) => {
-          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
-          return (
-            id.startsWith('binary_sensor.') &&
-            (dc === 'battery_charging' || hasKeyword(id, entity, ['charging', 'charger', 'charge']))
-          );
-        }),
-        pluggedId: pickFirstRelated((id, entity) => {
-          const dc = String(entity?.attributes?.device_class || '').toLowerCase();
-          return (
-            id.startsWith('binary_sensor.') &&
-            (dc === 'plug' || hasKeyword(id, entity, ['plug', 'connected']))
-          );
-        }),
-        chargingPowerId: pickFirstRelated((id, entity) => {
-          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
-          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
-          return ['kw', 'w'].includes(unit) && hasKeyword(id, entity, ['charge', 'charging', 'power']);
-        }),
-        chargeRateId: pickFirstRelated((id, entity) => {
-          if (!(id.startsWith('sensor.') || id.startsWith('input_number.'))) return false;
-          const unit = String(entity?.attributes?.unit_of_measurement || '').toLowerCase();
-          return ['km/h', 'mi/h', 'mph'].includes(unit) || hasKeyword(id, entity, ['rate']);
-        }),
-        timeToFullId: pickFirstRelated((id, entity) =>
-          (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
-          hasKeyword(id, entity, ['time_to_full', 'time to full', 'remaining_time'])
-        ),
-        chargeEndTimeId: pickFirstRelated((id, entity) =>
-          (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
-          hasKeyword(id, entity, ['charge_end', 'ready_by', 'end_time'])
-        ),
-        climateId: pickFirstRelated((id) => id.startsWith('climate.')),
-        lockId: pickFirstRelated((id) => id.startsWith('lock.')),
-        ignitionSwitchId: pickFirstRelated((id, entity) =>
-          id.startsWith('switch.') && hasKeyword(id, entity, ['ignition', 'engine', 'vehicle_on'])
-        ),
-        engineStatusId: pickFirstRelated((id, entity) =>
-          id.startsWith('binary_sensor.') && hasKeyword(id, entity, ['engine', 'ignition', 'motor'])
-        ),
-        lastUpdatedId: pickFirstRelated((id, entity) =>
-          (id.startsWith('sensor.') || id.startsWith('input_number.')) &&
-          hasKeyword(id, entity, ['last_update', 'updated'])
-        ),
-        apiStatusId: pickFirstRelated((id, entity) =>
-          (id.startsWith('sensor.') || id.startsWith('binary_sensor.')) &&
-          hasKeyword(id, entity, ['api_status', 'service_status', 'vehicle_status'])
-        ),
-        chargeLimitNumberId: pickFirstRelated((id, entity) =>
-          id.startsWith('number.') && hasKeyword(id, entity, ['charge_limit', 'soc limit'])
-        ),
-        chargeLimitSelectId: pickFirstRelated((id, entity) =>
-          (id.startsWith('select.') || id.startsWith('input_select.')) &&
-          hasKeyword(id, entity, ['charge_limit', 'soc limit'])
-        ),
-        updateButtonId: pickFirstRelated((id, entity) =>
-          id.startsWith('button.') && hasKeyword(id, entity, ['update', 'refresh', 'poll'])
-        ),
-      };
-
-      const fieldKeys = [
-        'batteryId',
-        'rangeId',
-        'odometerId',
-        'fuelLevelId',
-        'locationId',
-        'latitudeId',
-        'longitudeId',
-        'chargingId',
-        'pluggedId',
-        'chargingPowerId',
-        'chargeRateId',
-        'timeToFullId',
-        'chargeEndTimeId',
-        'climateId',
-        'lockId',
-        'ignitionSwitchId',
-        'engineStatusId',
-        'lastUpdatedId',
-        'apiStatusId',
-        'chargeLimitNumberId',
-        'chargeLimitSelectId',
-        'updateButtonId',
-      ];
-
-      fieldKeys.forEach((key) => {
-        if (editSettings?.[key]) return;
-        const suggested =
-          suggestions[key] ||
-          (key === 'chargingId' ? suggestions.chargingStateId : null) ||
-          fallbackSuggestions[key] ||
-          (key === 'chargingId' ? fallbackSuggestions.chargingStateId : null);
-        if (suggested && entities[suggested]) {
-          saveCardSetting(editSettingsKey, key, suggested);
-        }
-      });
-
-      if (!editSettings?.chargeControlId && Array.isArray(scopedMatch?.chargeControlIds)) {
-        const firstChargeControl = scopedMatch.chargeControlIds.find((id) => entities[id]);
-        if (firstChargeControl) {
-          saveCardSetting(editSettingsKey, 'chargeControlId', firstChargeControl);
-        }
-      }
-    },
-    [
-      editSettingsKey,
-      carAnchorEntityId,
-      autoPickCarAnchor,
-      carMatch,
-      conn,
-      entities,
-      editSettings,
-      saveCardSetting,
-    ]
-  );
+  const { autoMapCarFromAnchor } = useCarAutoMapping({
+    editSettingsKey,
+    editSettings,
+    entities,
+    saveCardSetting,
+    carMatch,
+    carAnchorOptions,
+    carAnchorEntityId,
+    conn,
+  });
   const visibilityCondition = editSettings?.visibilityCondition || null;
   const normalizedVisibilityCondition = normalizeVisibilityConditionConfig(visibilityCondition);
   const visibilityEnabled =
@@ -852,197 +1111,35 @@ export default function EditCardModal({
           )}
 
           {editSettingsKey && (
-            <div className="space-y-3">
-              <div className="popup-surface rounded-2xl border border-[var(--glass-border)]/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!visibilityEnabled) return;
-                      setShowVisibilityLogic((prev) => !prev);
-                    }}
-                    className={`flex-1 text-left ${visibilityEnabled ? 'cursor-pointer' : 'cursor-default'}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold tracking-widest text-[var(--text-primary)] uppercase">
-                          {t('visibility.title') || 'Conditional visibility'}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
-                          {t('visibility.description') ||
-                            'Show this card only when the rule matches.'}
-                        </p>
-                      </div>
-                      <span
-                        className={`mt-0.5 transition-colors ${visibilityEnabled ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]/60'}`}
-                      >
-                        {showVisibilityLogic ? (
-                          <ChevronUp className="h-5 w-5" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5" />
-                        )}
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggleVisibilityCondition}
-                    className={`relative h-6 w-12 rounded-full transition-colors ${visibilityEnabled ? 'bg-[var(--accent-color)]' : 'bg-gray-600'}`}
-                  >
-                    <span
-                      className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${visibilityEnabled ? 'translate-x-6' : 'translate-x-0'}`}
-                    />
-                  </button>
-                </div>
-
-                {visibilityEnabled && showVisibilityLogic && (
-                  <div className="mt-3 border-t border-[var(--glass-border)]/40 pt-3">
-                    <ConditionBuilder
-                      cardId={entityId}
-                      cardSettings={editSettings}
-                      condition={visibilityCondition}
-                      entities={entities}
-                      onChange={(nextCondition) =>
-                        saveCardSetting(editSettingsKey, 'visibilityCondition', nextCondition)
-                      }
-                      t={t}
-                      showHeader={false}
-                      showEnableToggle={false}
-                      forceEnabled
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <VisibilityConditionSection
+              t={t}
+              visibilityEnabled={visibilityEnabled}
+              showVisibilityLogic={showVisibilityLogic}
+              setShowVisibilityLogic={setShowVisibilityLogic}
+              toggleVisibilityCondition={toggleVisibilityCondition}
+              entityId={entityId}
+              editSettings={editSettings}
+              visibilityCondition={visibilityCondition}
+              entities={entities}
+              editSettingsKey={editSettingsKey}
+              saveCardSetting={saveCardSetting}
+            />
           )}
 
           {editSettingsKey && (
-            <div className="space-y-3">
-              <div className="popup-surface rounded-2xl border border-[var(--glass-border)]/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!popupTriggerEnabled) return;
-                      setShowPopupLogic((prev) => !prev);
-                    }}
-                    className={`flex-1 text-left ${popupTriggerEnabled ? 'cursor-pointer' : 'cursor-default'}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold tracking-widest text-[var(--text-primary)] uppercase">
-                          {t('popupTrigger.title') || 'Popup trigger'}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
-                          {t('popupTrigger.description') ||
-                            'Open this card popup automatically when the rule transitions from false to true.'}
-                        </p>
-                      </div>
-                      <span
-                        className={`mt-0.5 transition-colors ${popupTriggerEnabled ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]/60'}`}
-                      >
-                        {showPopupLogic ? (
-                          <ChevronUp className="h-5 w-5" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5" />
-                        )}
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextEnabled = !popupTriggerEnabled;
-                      savePopupTrigger(
-                        nextEnabled,
-                        popupTriggerCondition,
-                        popupTriggerCooldownSeconds,
-                        popupTriggerAutoCloseSeconds
-                      );
-                      setShowPopupLogic(nextEnabled);
-                    }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${popupTriggerEnabled ? 'bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'}`}
-                  >
-                    {popupTriggerEnabled
-                      ? `✓ ${t('popupTrigger.enabled') || 'Enabled'}`
-                      : t('popupTrigger.enable') || 'Enable'}
-                  </button>
-                </div>
-
-                {popupTriggerEnabled && (
-                  <div className="mt-3 space-y-1">
-                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">
-                      {t('popupTrigger.cooldownSeconds') || 'Cooldown (seconds)'}
-                    </label>
-                    <input
-                      type="number"
-                      min={MIN_POPUP_TRIGGER_COOLDOWN_SECONDS}
-                      max={MAX_POPUP_TRIGGER_COOLDOWN_SECONDS}
-                      value={popupTriggerCooldownSeconds}
-                      onChange={(e) =>
-                        savePopupTrigger(
-                          popupTriggerEnabled,
-                          popupTriggerCondition,
-                          e.target.value,
-                          popupTriggerAutoCloseSeconds
-                        )
-                      }
-                      className="w-full rounded-xl border-0 bg-[var(--glass-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
-                    />
-                    <p className="text-[10px] text-[var(--text-muted)]">
-                      {t('popupTrigger.cooldownHint') ||
-                        'Minimum 10 seconds between automatic popup opens for this trigger.'}
-                    </p>
-
-                    <label className="pt-1 text-[10px] font-bold text-[var(--text-muted)] uppercase">
-                      {t('popupTrigger.autoCloseSeconds') || 'Auto-close (seconds)'}
-                    </label>
-                    <input
-                      type="number"
-                      min={MIN_POPUP_TRIGGER_AUTO_CLOSE_SECONDS}
-                      max={MAX_POPUP_TRIGGER_AUTO_CLOSE_SECONDS}
-                      value={popupTriggerAutoCloseSeconds}
-                      onChange={(e) =>
-                        savePopupTrigger(
-                          popupTriggerEnabled,
-                          popupTriggerCondition,
-                          popupTriggerCooldownSeconds,
-                          e.target.value
-                        )
-                      }
-                      className="w-full rounded-xl border-0 bg-[var(--glass-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
-                    />
-                    <p className="text-[10px] text-[var(--text-muted)]">
-                      {t('popupTrigger.autoCloseHint') ||
-                        'Optional: auto-close popup after X seconds when opened by trigger. Set 0 to disable.'}
-                    </p>
-                  </div>
-                )}
-
-                {popupTriggerEnabled && showPopupLogic && (
-                  <div className="mt-3 border-t border-[var(--glass-border)]/40 pt-3">
-                    <ConditionBuilder
-                      cardId={entityId}
-                      cardSettings={editSettings}
-                      condition={popupTriggerCondition}
-                      entities={entities}
-                      onChange={(nextCondition) =>
-                        savePopupTrigger(
-                          true,
-                          nextCondition,
-                          popupTriggerCooldownSeconds,
-                          popupTriggerAutoCloseSeconds
-                        )
-                      }
-                      t={t}
-                      showHeader={false}
-                      showEnableToggle={false}
-                      forceEnabled
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
+            <PopupTriggerSection
+              t={t}
+              popupTriggerEnabled={popupTriggerEnabled}
+              showPopupLogic={showPopupLogic}
+              setShowPopupLogic={setShowPopupLogic}
+              savePopupTrigger={savePopupTrigger}
+              popupTriggerCondition={popupTriggerCondition}
+              popupTriggerCooldownSeconds={popupTriggerCooldownSeconds}
+              popupTriggerAutoCloseSeconds={popupTriggerAutoCloseSeconds}
+              entityId={entityId}
+              editSettings={editSettings}
+              entities={entities}
+            />
           )}
 
           {isEditWeatherTemp && editSettingsKey && (
