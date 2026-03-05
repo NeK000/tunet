@@ -1,12 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.13.0
 
-- Includes current dashboard updates from this development cycle.
-- Adds Playwright E2E infrastructure and 33 critical-flow tests (OAuth, drag-and-drop, modals).
-- Improves runtime UI performance by memoizing all dashboard card components.
+- Includes dashboard release `1.13.0`.
+- Adds Playwright E2E infrastructure and 33 tests for OAuth, drag-and-drop, and modal flows.
+- Improves dashboard runtime performance by memoizing all card components.
 - Improves modal accessibility focus behavior and adds optional Person zone badge icon support.
 - Adds option to hide page pill when only one page exists (outside edit mode).
+
+## Unreleased
+
+- No unreleased changes yet.
 
 ## 1.12.3
 
