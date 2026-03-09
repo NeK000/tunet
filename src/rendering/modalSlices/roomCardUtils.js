@@ -46,7 +46,7 @@ export function buildRoomCardsPayload({
       showVacuumChip: true,
       showCoverChip: true,
       showDoorChip: true,
-      showOccupiedIndicator: true,
+      showOccupiedIndicator: false,
       showIconWatermark: true,
       showPopupClimate: true,
       showPopupLights: true,

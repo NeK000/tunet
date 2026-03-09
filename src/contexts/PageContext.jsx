@@ -63,7 +63,7 @@ const ROOM_CARD_DEFAULTS = {
   showMediaChip: true,
   showActiveChip: true,
   showVacuumChip: true,
-  showOccupiedIndicator: true,
+  showOccupiedIndicator: false,
   showIconWatermark: true,
   showPopupClimate: true,
   showPopupLights: true,
