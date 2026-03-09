@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.14.2
+
+### Changed
+- Includes dashboard release `1.14.2`.
+- Refreshes Home Assistant OAuth access tokens proactively for protected API calls and restores API auth from stored browser sessions during startup.
+
+### Fixed
+- Reduces repeated invalid-auth websocket validation attempts against Home Assistant when Docker or add-on requests reuse a stale token.
+
 ## 1.14.1
 
 ### Changed

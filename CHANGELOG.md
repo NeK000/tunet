@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.14.2] — 2026-03-09
+
+### Changed
+- Refreshed Home Assistant OAuth access tokens proactively for protected API calls and restored API auth from stored browser sessions during app bootstrap.
+
+### Fixed
+- Reduced repeated Home Assistant invalid-auth websocket attempts by caching rejected backend auth validations for stale tokens.
+- Prevented long-running dashboards from hitting expired-session failures when settings and profile requests outlive the initial OAuth token.
+
+
 ## [1.14.1] — 2026-03-09
 
 ### Changed
