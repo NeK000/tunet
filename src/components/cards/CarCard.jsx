@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import { getIconComponent } from '../../icons';
 import { Car, Flame, MapPin, Thermometer, Zap } from '../../icons';
 import { useConfig, useHomeAssistantMeta } from '../../contexts';
@@ -53,8 +53,32 @@ const CarCard = ({
   isMobile,
   t,
 }) => {
+  const cardRef = useRef(null);
+  const [isNarrowLargeCard, setIsNarrowLargeCard] = useState(false);
   const { unitsMode } = useConfig();
   const { haConfig } = useHomeAssistantMeta();
+
+  useEffect(() => {
+    const element = cardRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+
+    const updateByWidth = (width) => {
+      setIsNarrowLargeCard((prev) => {
+        if (prev) return width < 336;
+        return width < 316;
+      });
+    };
+
+    updateByWidth(element.clientWidth);
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect?.width ?? element.clientWidth;
+      updateByWidth(width);
+    });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const settings = cardSettings[settingsKey] || cardSettings[cardId] || {};
   const {
@@ -129,6 +153,7 @@ const CarCard = ({
   const sizeSetting = cardSettings[settingsKey]?.size || cardSettings[cardId]?.size;
   const isSmall = sizeSetting === 'small';
   const isDenseMobile = isMobile && !isSmall;
+  const useCompactMetrics = isDenseMobile || isNarrowLargeCard;
 
   if (isSmall) {
     return (
@@ -182,6 +207,7 @@ const CarCard = ({
 
   return (
     <div
+      ref={cardRef}
       key={cardId}
       {...dragProps}
       data-haptic={editMode ? undefined : 'card'}
@@ -241,28 +267,28 @@ const CarCard = ({
           )}
         </div>
       </div>
-      <div className="flex items-end justify-between">
-        <div>
+      <div className={`flex items-end justify-between ${useCompactMetrics ? 'gap-3' : 'gap-4'}`}>
+        <div className="min-w-0 flex-1">
           <p
             className={`${isDenseMobile ? 'mb-0.5 text-[10px]' : 'mb-1 text-xs'} font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-60`}
           >
             {name}
           </p>
-          <div className={`flex items-baseline font-sans leading-none ${isDenseMobile ? 'gap-1.5' : 'gap-2'}`}>
+          <div className={`flex min-w-0 items-baseline font-sans leading-none ${useCompactMetrics ? 'gap-1.5' : 'gap-2'}`}>
             <span
-              className={`${isDenseMobile ? 'text-3xl' : 'text-4xl'} leading-none font-thin ${isCharging ? 'text-[var(--status-success-fg)]' : 'text-[var(--text-primary)]'}`}
+              className={`${useCompactMetrics ? 'text-[2rem]' : 'text-4xl'} leading-none font-thin ${isCharging ? 'text-[var(--status-success-fg)]' : 'text-[var(--text-primary)]'}`}
             >
               {batteryValue !== null ? `${formatValue(batteryValue)}%` : '--'}
             </span>
             {isCharging && (
               <Zap
-                className={`${isDenseMobile ? 'mb-0.5 h-4 w-4' : 'mb-1 -ml-1 h-5 w-5'} animate-pulse text-[var(--status-success-fg)]`}
+                className={`${useCompactMetrics ? 'mb-0.5 h-4 w-4' : 'mb-1 -ml-1 h-5 w-5'} animate-pulse text-[var(--status-success-fg)]`}
                 fill="currentColor"
               />
             )}
             {displayRangeValue !== null && (
               <span
-                className={`${isDenseMobile ? 'text-lg' : 'ml-1 text-xl'} font-light text-[var(--text-secondary)]`}
+                className={`${useCompactMetrics ? 'text-base' : 'ml-1 text-xl'} min-w-0 truncate font-light text-[var(--text-secondary)]`}
               >
                 {formatUnitValue(displayRangeValue, { fallback: '--' })}
                 {rangeUnit}
@@ -279,7 +305,7 @@ const CarCard = ({
           <img
             src={resolvedImageUrl}
             alt=""
-            className="pointer-events-none h-20 w-auto max-w-[45%] object-contain opacity-80 drop-shadow-lg select-none"
+            className={`pointer-events-none h-20 w-auto object-contain opacity-80 drop-shadow-lg select-none ${useCompactMetrics ? 'max-w-[38%]' : 'max-w-[45%]'}`}
             onError={(e) => {
               e.target.style.display = 'none';
             }}

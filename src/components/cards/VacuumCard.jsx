@@ -45,12 +45,18 @@ const VacuumCard = ({
     const element = cardRef.current;
     if (!element || typeof ResizeObserver === 'undefined') return;
 
-    const updateWidth = () => {
-      setIsNarrowSmallCard(element.clientWidth < 230);
+    const updateWidth = (width) => {
+      setIsNarrowSmallCard((prev) => {
+        if (prev) return width < 296;
+        return width < 276;
+      });
     };
 
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
+    updateWidth(element.clientWidth);
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect?.width ?? element.clientWidth;
+      updateWidth(width);
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
@@ -108,7 +114,7 @@ const VacuumCard = ({
           e.stopPropagation();
           if (!editMode) onOpen();
         }}
-        className={`glass-texture touch-feedback group relative flex h-full overflow-hidden rounded-3xl border font-sans transition-all duration-500 ${useStackedSmallControls ? 'flex-col items-stretch justify-center gap-2 p-3.5' : isMobile ? 'items-center justify-between gap-2 p-3 pl-4' : 'items-center justify-between gap-4 p-4 pl-5'} ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'} ${isUnavailable ? 'opacity-70' : ''}`}
+        className={`glass-texture touch-feedback group relative flex h-full overflow-hidden rounded-3xl border font-sans transition-all duration-500 ${useStackedSmallControls ? 'items-center justify-between gap-3 p-3' : isMobile ? 'items-center justify-between gap-2 p-3 pl-4' : 'items-center justify-between gap-4 p-4 pl-5'} ${!editMode ? 'cursor-pointer active:scale-[0.98]' : 'cursor-move'} ${isUnavailable ? 'opacity-70' : ''}`}
         style={{
           ...cardStyle,
           backgroundColor: isErrorState
@@ -127,18 +133,18 @@ const VacuumCard = ({
         }}
       >
         {controls}
-        <div className={`flex min-w-0 ${useStackedSmallControls ? 'w-full items-center gap-3' : isMobile ? 'flex-1 items-center gap-3' : 'flex-1 items-center gap-4'}`}>
+        <div className={`flex min-w-0 ${useStackedSmallControls ? 'flex-1 items-center gap-3' : isMobile ? 'flex-1 items-center gap-3' : 'flex-1 items-center gap-4'}`}>
           <div
-            className={`flex flex-shrink-0 items-center justify-center transition-all group-hover:scale-110 ${state === 'cleaning' ? 'animate-pulse bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'} ${isMobile ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl'}`}
+            className={`flex flex-shrink-0 items-center justify-center transition-all group-hover:scale-110 ${state === 'cleaning' ? 'animate-pulse bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'bg-[var(--glass-bg)] text-[var(--text-secondary)]'} ${useStackedSmallControls ? 'h-10 w-10 rounded-xl' : isMobile ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl'}`}
           >
-            <Icon className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} stroke-[1.5px]`} />
+            <Icon className={`${useStackedSmallControls ? 'h-[18px] w-[18px]' : isMobile ? 'h-5 w-5' : 'h-6 w-6'} stroke-[1.5px]`} />
           </div>
           <div className="flex min-w-0 flex-col">
-            <p className={`${isMobile ? 'mb-1 text-[10px]' : 'mb-1.5 text-xs'} leading-none font-bold tracking-widest break-words whitespace-normal text-[var(--text-secondary)] uppercase opacity-60`}>
+            <p className={`${useStackedSmallControls ? 'mb-0.5 text-[10px]' : isMobile ? 'mb-1 text-[10px]' : 'mb-1.5 text-xs'} truncate leading-none font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-60`}>
               {name}
             </p>
-            <div className={`flex items-center ${isMobile ? 'gap-1.5' : 'gap-2'}`}>
-              <span className={`${isMobile ? 'text-xs' : 'text-sm'} leading-none font-bold text-[var(--text-primary)]`}>
+            <div className={`flex min-w-0 items-center ${useStackedSmallControls ? 'gap-1' : isMobile ? 'gap-1.5' : 'gap-2'}`}>
+              <span className={`${useStackedSmallControls ? 'truncate text-[13px]' : isMobile ? 'text-xs' : 'text-sm'} leading-none font-bold text-[var(--text-primary)]`}>
                 {statusText}
               </span>
               {isErrorState && (
@@ -154,7 +160,11 @@ const VacuumCard = ({
           </div>
         </div>
         <div
-          className={`vacuum-card-controls shrink-0 ${useStackedSmallControls ? 'self-end rounded-2xl bg-[var(--glass-bg)] p-1' : ''}`}
+          className={
+            useStackedSmallControls
+              ? 'shrink-0 flex flex-col gap-1 rounded-2xl bg-[var(--glass-bg)] p-1'
+              : 'vacuum-card-controls shrink-0'
+          }
         >
           <button
             onClick={(e) => {
@@ -167,9 +177,9 @@ const VacuumCard = ({
             className={`flex items-center justify-center text-[var(--text-primary)] transition-colors active:scale-95 ${useStackedSmallControls ? 'h-8 w-8 rounded-xl hover:bg-[var(--glass-bg-hover)]' : 'h-8 w-8 rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)]'}`}
           >
             {state === 'cleaning' ? (
-              <Pause className="h-4 w-4 fill-current" />
+              <Pause className={`${useStackedSmallControls ? 'h-4 w-4' : 'h-4 w-4'} fill-current`} />
             ) : (
-              <Play className="ml-0.5 h-4 w-4 fill-current" />
+              <Play className={`${useStackedSmallControls ? 'ml-0.5 h-4 w-4' : 'ml-0.5 h-4 w-4'} fill-current`} />
             )}
           </button>
           <button
@@ -179,7 +189,7 @@ const VacuumCard = ({
             }}
             className={`flex items-center justify-center text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] active:scale-95 ${useStackedSmallControls ? 'h-8 w-8 rounded-xl hover:bg-[var(--glass-bg-hover)]' : 'h-8 w-8 rounded-xl bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)]'}`}
           >
-            <Home className="h-4 w-4" />
+            <Home className={useStackedSmallControls ? 'h-4 w-4' : 'h-4 w-4'} />
           </button>
         </div>
       </div>
