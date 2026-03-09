@@ -2,6 +2,7 @@
 // Used as saveTokens / loadTokens callbacks for HAWS getAuth()
 
 const PRIMARY_STORAGE_SLOT = 'tunet_auth_cache_v1';
+const TOKEN_SAVED_AT_SLOT = 'tunet_auth_saved_at_v1';
 const OAUTH_SYNC_REQUEST_KEY = 'tunet_auth_sync_request_v1';
 const OAUTH_SYNC_RESPONSE_KEY = 'tunet_auth_sync_response_v1';
 const OAUTH_SYNC_CHANNEL_NAME = 'tunet_auth_sync_channel_v1';
@@ -56,7 +57,17 @@ const clearPrimarySlots = () => {
   const sessionStore = getSessionStorage();
   const localStore = getLocalStorage();
   sessionStore?.removeItem(PRIMARY_STORAGE_SLOT);
+  sessionStore?.removeItem(TOKEN_SAVED_AT_SLOT);
   localStore?.removeItem(PRIMARY_STORAGE_SLOT);
+  localStore?.removeItem(TOKEN_SAVED_AT_SLOT);
+};
+
+const readSavedAtTimestamp = () => {
+  const sessionStore = getSessionStorage();
+  const localStore = getLocalStorage();
+  const raw = sessionStore?.getItem(TOKEN_SAVED_AT_SLOT) || localStore?.getItem(TOKEN_SAVED_AT_SLOT);
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
 const emitTokenChange = () => {
@@ -151,9 +162,12 @@ export function saveTokens(tokenInfo) {
     const sessionStore = getSessionStorage();
     const localStore = getLocalStorage();
     const payload = JSON.stringify(tokenInfo);
+    const savedAt = String(Date.now());
     clearPrimarySlots();
     sessionStore?.setItem(PRIMARY_STORAGE_SLOT, payload);
+    sessionStore?.setItem(TOKEN_SAVED_AT_SLOT, savedAt);
     localStore?.setItem(PRIMARY_STORAGE_SLOT, payload);
+    localStore?.setItem(TOKEN_SAVED_AT_SLOT, savedAt);
     clearLegacySlots();
     emitTokenChange();
   } catch (error) {
@@ -203,6 +217,14 @@ export function clearOAuthTokens() {
     emitTokenChange();
   } catch (error) {
     console.error('Failed to clear OAuth tokens from browser storage:', error);
+  }
+}
+
+export function getOAuthTokenSavedAt() {
+  try {
+    return readSavedAtTimestamp();
+  } catch {
+    return 0;
   }
 }
 

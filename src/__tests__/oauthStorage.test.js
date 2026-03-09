@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearOAuthTokens,
+  getOAuthTokenSavedAt,
   hasOAuthTokens,
   loadTokens,
   requestTokensFromOtherTabs,
@@ -30,6 +31,8 @@ describe('oauthStorage', () => {
     expect(localStorage.getItem('tunet_auth_cache_v1')).toBe(
       JSON.stringify({ access_token: 'access-1', refresh_token: 'refresh-1' })
     );
+    expect(Number(sessionStorage.getItem('tunet_auth_saved_at_v1'))).toBeGreaterThan(0);
+    expect(getOAuthTokenSavedAt()).toBeGreaterThan(0);
   });
 
   it('migrates legacy local storage OAuth tokens into the primary storage slot', () => {
@@ -69,6 +72,8 @@ describe('oauthStorage', () => {
 
     expect(sessionStorage.getItem('tunet_auth_cache_v1')).toBeNull();
     expect(localStorage.getItem('tunet_auth_cache_v1')).toBeNull();
+    expect(sessionStorage.getItem('tunet_auth_saved_at_v1')).toBeNull();
+    expect(localStorage.getItem('tunet_auth_saved_at_v1')).toBeNull();
     expect(localStorage.getItem('ha_oauth_tokens')).toBeNull();
   });
 

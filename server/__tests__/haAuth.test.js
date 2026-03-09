@@ -48,6 +48,43 @@ describe('createValidatedHomeAssistantUserResolver', () => {
 
     expect(loadCurrentUser).toHaveBeenCalledTimes(1);
   });
+
+  it('caches invalid auth failures by URL and token to avoid repeated HA websocket attempts', async () => {
+    const invalidAuthError = new Error('Invalid auth');
+    const loadCurrentUser = vi.fn().mockRejectedValue(invalidAuthError);
+    const resolveUser = createValidatedHomeAssistantUserResolver({
+      cacheTtlMs: 60_000,
+      invalidAuthCacheTtlMs: 60_000,
+      loadCurrentUser,
+    });
+
+    await expect(
+      resolveUser({ haUrl: 'https://ha.example', accessToken: 'bad-token' })
+    ).rejects.toThrow('Invalid auth');
+    await expect(
+      resolveUser({ haUrl: 'https://ha.example', accessToken: 'bad-token' })
+    ).rejects.toThrow('Invalid auth');
+
+    expect(loadCurrentUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache non-auth failures', async () => {
+    const loadCurrentUser = vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED'));
+    const resolveUser = createValidatedHomeAssistantUserResolver({
+      cacheTtlMs: 60_000,
+      invalidAuthCacheTtlMs: 60_000,
+      loadCurrentUser,
+    });
+
+    await expect(
+      resolveUser({ haUrl: 'https://ha.example', accessToken: 'token-1' })
+    ).rejects.toThrow('ECONNREFUSED');
+    await expect(
+      resolveUser({ haUrl: 'https://ha.example', accessToken: 'token-1' })
+    ).rejects.toThrow('ECONNREFUSED');
+
+    expect(loadCurrentUser).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('createHomeAssistantAuthMiddleware', () => {

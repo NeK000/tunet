@@ -57,4 +57,27 @@ describe('settingsApi OAuth refresh retry', () => {
     );
     expect(notifyUnauthorizedMock).not.toHaveBeenCalled();
   });
+
+  it('uses proactively refreshed OAuth headers on the first request when available', async () => {
+    getValidatedHeadersAsyncMock.mockReset();
+    getStoredAuthMethodMock.mockReturnValue('oauth');
+    getValidatedHeadersAsyncMock.mockResolvedValueOnce({
+      'x-ha-url': 'https://ha.example',
+      Authorization: 'Bearer proactively-refreshed-token',
+    });
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ revision: 8 }),
+    });
+
+    const { fetchCurrentSettings } = await import('../services/settingsApi');
+
+    await expect(fetchCurrentSettings('user-1', 'device-1')).resolves.toEqual({ revision: 8 });
+
+    expect(getValidatedHeadersAsyncMock).toHaveBeenCalledTimes(1);
+    expect(getValidatedHeadersAsyncMock).toHaveBeenNthCalledWith(1, undefined);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(notifyUnauthorizedMock).not.toHaveBeenCalled();
+  });
 });

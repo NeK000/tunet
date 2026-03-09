@@ -2,10 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const loadTokensMock = vi.fn();
 const clearOAuthTokensMock = vi.fn();
+const getOAuthTokenSavedAtMock = vi.fn(() => 0);
+const saveTokensMock = vi.fn();
+const getAuthMock = vi.fn();
 
 vi.mock('../services/oauthStorage', () => ({
   loadTokens: () => loadTokensMock(),
   clearOAuthTokens: () => clearOAuthTokensMock(),
+  getOAuthTokenSavedAt: () => getOAuthTokenSavedAtMock(),
+  saveTokens: (...args) => saveTokensMock(...args),
+}));
+
+vi.mock('home-assistant-js-websocket', () => ({
+  getAuth: (...args) => getAuthMock(...args),
 }));
 
 describe('getHomeAssistantRequestHeaders', () => {
@@ -14,6 +23,10 @@ describe('getHomeAssistantRequestHeaders', () => {
     sessionStorage.clear();
     loadTokensMock.mockReset();
     clearOAuthTokensMock.mockReset();
+    getOAuthTokenSavedAtMock.mockReset();
+    getOAuthTokenSavedAtMock.mockReturnValue(0);
+    saveTokensMock.mockReset();
+    getAuthMock.mockReset();
   });
 
   it('uses OAuth access tokens when OAuth auth is active', async () => {
@@ -96,5 +109,64 @@ describe('getHomeAssistantRequestHeaders', () => {
     expect(refreshAccessToken).toHaveBeenCalledTimes(1);
 
     setOAuthAuthProvider(null);
+  });
+
+  it('proactively refreshes aging OAuth tokens before API requests are sent', async () => {
+    localStorage.setItem('ha_auth_method', 'oauth');
+    localStorage.setItem('ha_url', 'https://ha.example');
+    loadTokensMock.mockReturnValue({ access_token: 'stored-token', expires: Date.now() - 1_000 });
+    getOAuthTokenSavedAtMock.mockReturnValue(Date.now() - 46 * 60 * 1000);
+
+    const refreshAccessToken = vi.fn(async function refresh() {
+      this.accessToken = 'proactively-refreshed-token';
+    });
+
+    const { getValidatedHomeAssistantRequestHeadersAsync, setOAuthAuthProvider } = await import(
+      '../services/apiAuth'
+    );
+
+    setOAuthAuthProvider({ current: { accessToken: 'stale-live-token', refreshAccessToken } });
+
+    await expect(getValidatedHomeAssistantRequestHeadersAsync()).resolves.toEqual({
+      'x-ha-url': 'https://ha.example',
+      Authorization: 'Bearer proactively-refreshed-token',
+    });
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+
+    setOAuthAuthProvider(null);
+  });
+
+  it('creates an OAuth auth session from stored tokens when authRef is unavailable', async () => {
+    localStorage.setItem('ha_auth_method', 'oauth');
+    localStorage.setItem('ha_url', 'https://ha.example');
+    loadTokensMock.mockReturnValue({
+      access_token: 'stored-token',
+      refresh_token: 'refresh-token',
+      expires: Date.now() - 1_000,
+      hassUrl: 'https://ha.example',
+    });
+
+    const detachedAuth = {
+      accessToken: 'stored-token',
+      expired: true,
+      refreshAccessToken: vi.fn(async function refresh() {
+        this.accessToken = 'detached-refreshed-token';
+        this.expired = false;
+      }),
+    };
+    getAuthMock.mockResolvedValue(detachedAuth);
+
+    const { getValidatedHomeAssistantRequestHeadersAsync } = await import('../services/apiAuth');
+
+    await expect(getValidatedHomeAssistantRequestHeadersAsync()).resolves.toEqual({
+      'x-ha-url': 'https://ha.example',
+      Authorization: 'Bearer detached-refreshed-token',
+    });
+    expect(getAuthMock).toHaveBeenCalledWith({
+      hassUrl: 'https://ha.example',
+      saveTokens: expect.any(Function),
+      loadTokens: expect.any(Function),
+    });
+    expect(detachedAuth.refreshAccessToken).toHaveBeenCalledTimes(1);
   });
 });

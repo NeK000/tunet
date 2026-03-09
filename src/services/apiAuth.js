@@ -1,8 +1,14 @@
-import { clearOAuthTokens, loadTokens } from './oauthStorage';
+import { getAuth } from 'home-assistant-js-websocket';
+import { clearOAuthTokens, getOAuthTokenSavedAt, loadTokens, saveTokens } from './oauthStorage';
 
 export const HOME_ASSISTANT_API_UNAUTHORIZED_EVENT = 'tunet:api-auth-unauthorized';
+const OAUTH_PROACTIVE_REFRESH_MS = 45 * 60 * 1000;
+const OAUTH_REFRESH_SKEW_MS = 60 * 1000;
 
 let oauthAuthProvider = null;
+let detachedOAuthAuth = null;
+let pendingOAuthRefreshPromise = null;
+let pendingOAuthAuthPromise = null;
 
 export const getStoredAuthMethod = () => {
   try {
@@ -14,7 +20,7 @@ export const getStoredAuthMethod = () => {
 
 const isOAuthAuthMethod = () => getStoredAuthMethod() === 'oauth';
 
-const getOAuthAuth = () => oauthAuthProvider?.current ?? null;
+const getOAuthAuth = () => oauthAuthProvider?.current ?? detachedOAuthAuth ?? null;
 
 const getStoredToken = () => {
   try {
@@ -40,6 +46,76 @@ const getCurrentOAuthAccessToken = () => {
   return loadTokens()?.access_token || '';
 };
 
+const getStoredOAuthExpiresAt = () => {
+  const expiresAt = Number(loadTokens()?.expires);
+  return Number.isFinite(expiresAt) && expiresAt > 0 ? expiresAt : 0;
+};
+
+const clearCachedOAuthAuth = () => {
+  detachedOAuthAuth = null;
+  pendingOAuthAuthPromise = null;
+};
+
+const ensureOAuthAuthSession = async () => {
+  if (!isOAuthAuthMethod()) {
+    return null;
+  }
+
+  const existingAuth = getOAuthAuth();
+  if (existingAuth) {
+    return existingAuth;
+  }
+
+  if (pendingOAuthAuthPromise) {
+    return pendingOAuthAuthPromise;
+  }
+
+  const hassUrl = getStoredUrl();
+  const tokens = loadTokens();
+  if (!hassUrl || !tokens?.access_token) {
+    return null;
+  }
+  if (tokens.hassUrl && tokens.hassUrl !== hassUrl) {
+    return null;
+  }
+
+  pendingOAuthAuthPromise = getAuth({
+    hassUrl,
+    saveTokens,
+    loadTokens: () => Promise.resolve(loadTokens()),
+  })
+    .then((auth) => {
+      detachedOAuthAuth = auth;
+      return auth;
+    })
+    .catch((error) => {
+      clearCachedOAuthAuth();
+      throw error;
+    })
+    .finally(() => {
+      pendingOAuthAuthPromise = null;
+    });
+
+  return pendingOAuthAuthPromise;
+};
+
+const shouldProactivelyRefreshOAuth = () => {
+  if (!isOAuthAuthMethod()) return false;
+  const auth = getOAuthAuth();
+  if (auth?.expired === true) return true;
+
+  const expiresAt = getStoredOAuthExpiresAt();
+  if (expiresAt > 0) {
+    return Date.now() + OAUTH_REFRESH_SKEW_MS >= expiresAt;
+  }
+
+  if (typeof auth?.refreshAccessToken !== 'function') return false;
+
+  const savedAt = getOAuthTokenSavedAt();
+  if (!savedAt) return true;
+  return Date.now() - savedAt >= OAUTH_PROACTIVE_REFRESH_MS;
+};
+
 const clearStoredTokenAuth = () => {
   try {
     globalThis.localStorage?.removeItem('ha_token');
@@ -60,6 +136,7 @@ export function notifyHomeAssistantApiUnauthorized(message = 'Home Assistant aut
   const authMethod = getStoredAuthMethod();
 
   if (authMethod === 'oauth') {
+    clearCachedOAuthAuth();
     clearOAuthTokens();
   } else {
     clearStoredTokenAuth();
@@ -81,6 +158,9 @@ export function notifyHomeAssistantApiUnauthorized(message = 'Home Assistant aut
 
 export function setOAuthAuthProvider(provider) {
   oauthAuthProvider = provider ?? null;
+  if (provider) {
+    detachedOAuthAuth = null;
+  }
 }
 
 export async function refreshOAuthAccessToken() {
@@ -88,12 +168,24 @@ export async function refreshOAuthAccessToken() {
     return getStoredToken();
   }
 
-  const auth = getOAuthAuth();
+  if (pendingOAuthRefreshPromise) {
+    return pendingOAuthRefreshPromise;
+  }
+
+  const auth = (await ensureOAuthAuthSession()) ?? getOAuthAuth();
   if (typeof auth?.refreshAccessToken === 'function') {
-    await auth.refreshAccessToken();
-    if (typeof auth?.accessToken === 'string' && auth.accessToken) {
-      return auth.accessToken;
-    }
+    pendingOAuthRefreshPromise = auth
+      .refreshAccessToken()
+      .then(() => {
+        if (typeof auth?.accessToken === 'string' && auth.accessToken) {
+          return auth.accessToken;
+        }
+        return getCurrentOAuthAccessToken();
+      })
+      .finally(() => {
+        pendingOAuthRefreshPromise = null;
+      });
+    return pendingOAuthRefreshPromise;
   }
 
   return getCurrentOAuthAccessToken();
@@ -140,11 +232,15 @@ export async function getHomeAssistantRequestHeadersAsync({ forceRefreshOAuth = 
   const headers = {};
   const haUrl = getStoredUrl();
   const fallbackUrl = getStoredFallbackUrl();
-  const accessToken = forceRefreshOAuth
-    ? await refreshOAuthAccessToken()
-    : isOAuthAuthMethod()
-      ? getCurrentOAuthAccessToken()
-      : getStoredToken();
+  let accessToken = isOAuthAuthMethod() ? getCurrentOAuthAccessToken() : getStoredToken();
+
+  if ((forceRefreshOAuth || shouldProactivelyRefreshOAuth()) && isOAuthAuthMethod()) {
+    await ensureOAuthAuthSession();
+  }
+
+  if (forceRefreshOAuth || shouldProactivelyRefreshOAuth()) {
+    accessToken = await refreshOAuthAccessToken();
+  }
 
   if (haUrl) {
     headers['x-ha-url'] = haUrl;

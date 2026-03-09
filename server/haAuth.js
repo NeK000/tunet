@@ -1,9 +1,17 @@
-import { createConnection, createLongLivedTokenAuth } from 'home-assistant-js-websocket';
+import {
+  createConnection,
+  createLongLivedTokenAuth,
+  ERR_INVALID_AUTH,
+} from 'home-assistant-js-websocket';
 import { WebSocket as NodeWebSocket } from 'ws';
 
 const DEFAULT_CACHE_TTL_MS = Math.min(
   Math.max(Number(process.env.HA_AUTH_CACHE_TTL_MS) || 15_000, 1_000),
   300_000
+);
+const DEFAULT_INVALID_AUTH_CACHE_TTL_MS = Math.min(
+  Math.max(Number(process.env.HA_INVALID_AUTH_CACHE_TTL_MS) || 60_000, 1_000),
+  3_600_000
 );
 const MAX_CACHE_ENTRIES = 200;
 const TRUSTED_INGRESS_IPS = new Set(['172.30.32.2', '127.0.0.1', '::1']);
@@ -138,6 +146,23 @@ const pruneCache = (cache, now) => {
   }
 };
 
+const isInvalidAuthError = (error) => {
+  if (error === ERR_INVALID_AUTH) return true;
+
+  const message = String(error?.message || error || '').toLowerCase();
+  return (
+    message.includes('invalid auth') ||
+    message.includes('auth_invalid') ||
+    message.includes('unauthorized') ||
+    message.includes('invalid authentication')
+  );
+};
+
+const createCachedAuthError = (error) => {
+  if (error instanceof Error) return error;
+  return new Error(String(error || 'Home Assistant authentication failed'));
+};
+
 const loadCurrentUserFromHomeAssistant = async ({ haUrl, accessToken }) => {
   const auth = createLongLivedTokenAuth(haUrl, accessToken);
   const connection = await createConnection({ auth });
@@ -165,6 +190,7 @@ const loadCurrentUserFromHomeAssistant = async ({ haUrl, accessToken }) => {
 
 export const createValidatedHomeAssistantUserResolver = ({
   cacheTtlMs = DEFAULT_CACHE_TTL_MS,
+  invalidAuthCacheTtlMs = DEFAULT_INVALID_AUTH_CACHE_TTL_MS,
   loadCurrentUser = loadCurrentUserFromHomeAssistant,
 } = {}) => {
   const cache = new Map();
@@ -176,6 +202,10 @@ export const createValidatedHomeAssistantUserResolver = ({
 
     if (cached?.user && cached.expiresAt > now) {
       return cached.user;
+    }
+
+    if (cached?.error && cached.expiresAt > now) {
+      throw cached.error;
     }
 
     if (cached?.pendingPromise) {
@@ -193,7 +223,14 @@ export const createValidatedHomeAssistantUserResolver = ({
         return user;
       })
       .catch((error) => {
-        cache.delete(cacheKey);
+        if (isInvalidAuthError(error)) {
+          cache.set(cacheKey, {
+            error: createCachedAuthError(error),
+            expiresAt: Date.now() + invalidAuthCacheTtlMs,
+          });
+        } else {
+          cache.delete(cacheKey);
+        }
         throw error;
       });
 
