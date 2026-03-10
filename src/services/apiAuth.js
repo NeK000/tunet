@@ -125,8 +125,10 @@ const clearStoredTokenAuth = () => {
   }
 };
 
+/** @typedef {Error & { status: number, body: { error: string } }} UnauthorizedApiError */
+
 const createUnauthorizedError = (message) => {
-  const error = new Error(message);
+  const error = /** @type {UnauthorizedApiError} */ (new Error(message));
   error.status = 401;
   error.body = { error: message };
   return error;

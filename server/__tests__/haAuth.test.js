@@ -89,6 +89,7 @@ describe('createValidatedHomeAssistantUserResolver', () => {
 
 describe('createHomeAssistantAuthMiddleware', () => {
   it('trusts Supervisor-provided user headers for ingress requests from the trusted proxy', async () => {
+    process.env.TUNET_TRUST_SUPERVISOR_INGRESS = '1';
     const validateHomeAssistantUser = vi.fn();
     const middleware = createHomeAssistantAuthMiddleware({ validateHomeAssistantUser });
     const req = createRequest({
@@ -112,6 +113,30 @@ describe('createHomeAssistantAuthMiddleware', () => {
       source: 'supervisor-ingress',
     });
     expect(next).toHaveBeenCalledTimes(1);
+    delete process.env.TUNET_TRUST_SUPERVISOR_INGRESS;
+  });
+
+  it('does not trust ingress headers unless explicitly enabled', async () => {
+    delete process.env.TUNET_TRUST_SUPERVISOR_INGRESS;
+    const validateHomeAssistantUser = vi.fn();
+    const middleware = createHomeAssistantAuthMiddleware({ validateHomeAssistantUser });
+    const req = createRequest({
+      '__ip': '::ffff:172.30.32.2',
+      '__remoteAddress': '::ffff:172.30.32.2',
+      'x-ingress-path': '/api/hassio_ingress/abc123',
+      'x-remote-user-id': 'ha-user-1',
+      'x-remote-user-display-name': 'Living Room Tablet',
+    });
+    const res = createResponse();
+    const next = vi.fn();
+
+    await middleware(req, res, next);
+
+    expect(validateHomeAssistantUser).not.toHaveBeenCalled();
+    expect(req.authenticatedHaUser).toBeUndefined();
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({ error: 'Missing or invalid x-ha-url header' });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('rejects requests without Home Assistant URL metadata', async () => {

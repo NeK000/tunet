@@ -41,6 +41,8 @@ if (typeof globalThis.WebSocket === 'undefined') {
   globalThis.WebSocket = NodeWebSocket;
 }
 
+const isSupervisorIngressTrustEnabled = () => process.env.TUNET_TRUST_SUPERVISOR_INGRESS === '1';
+
 const normalizeRemoteAddress = (rawAddress) => {
   if (typeof rawAddress !== 'string' || !rawAddress.trim()) return '';
   const trimmed = rawAddress.trim();
@@ -48,6 +50,10 @@ const normalizeRemoteAddress = (rawAddress) => {
 };
 
 const isTrustedIngressRequest = (req) => {
+  if (!isSupervisorIngressTrustEnabled()) {
+    return false;
+  }
+
   const ingressPath = req.get('x-ingress-path');
   if (typeof ingressPath !== 'string' || !ingressPath.trim()) {
     return false;
