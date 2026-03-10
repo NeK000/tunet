@@ -1673,58 +1673,59 @@ export default function ConfigModal({
               className="overflow-hidden rounded-2xl bg-[var(--glass-bg)] transition-all hover:bg-[var(--glass-bg-hover)]"
             >
               <div className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-hover)] p-1.5">
-                    {entityPictureAvailable ? (
-                      <img
-                        src={entityPicture}
-                        alt=""
-                        className="h-full w-full object-contain"
-                        onError={() => markImageFailed(entityPicture)}
-                      />
-                    ) : (
-                      <Download className="h-5 w-5 text-[var(--accent-color)]" />
-                    )}
-                  </div>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg-hover)] p-1.5">
+                      {entityPictureAvailable ? (
+                        <img
+                          src={entityPicture}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          onError={() => markImageFailed(entityPicture)}
+                        />
+                      ) : (
+                        <Download className="h-5 w-5 text-[var(--accent-color)]" />
+                      )}
+                    </div>
 
-                  <div className="min-w-0 flex-1">
-                    <h4 className="truncate text-sm font-bold text-[var(--text-primary)]">
-                      {update.attributes?.title ||
-                        update.attributes?.friendly_name ||
-                        update.entity_id}
-                    </h4>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {installedVersion && (
-                        <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-                          <span className="text-[10px] font-bold tracking-wider uppercase opacity-50">
-                            {t('updates.from')}
-                          </span>
-                          <span className="rounded border border-[var(--glass-border)] bg-[var(--glass-bg)] px-1.5 py-0.5 font-mono text-[10px] opacity-80">
-                            {installedVersion}
-                          </span>
-                        </div>
-                      )}
-                      {installedVersion && latestVersion && (
-                        <ArrowRight className="h-3 w-3 text-[var(--text-muted)] opacity-30" />
-                      )}
-                      {latestVersion && (
-                        <div className="flex items-center gap-1.5 text-[var(--status-success-fg)]">
-                          <span className="text-[10px] font-bold tracking-wider uppercase opacity-50">
-                            {t('updates.to')}
-                          </span>
-                          <span className="rounded border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-1.5 py-0.5 font-mono text-[10px] font-bold">
-                            {latestVersion}
-                          </span>
-                        </div>
-                      )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="break-words text-sm font-bold leading-5 text-[var(--text-primary)]">
+                        {update.attributes?.title ||
+                          update.attributes?.friendly_name ||
+                          update.entity_id}
+                      </h4>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        {installedVersion && (
+                          <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+                            <span className="text-[10px] font-bold tracking-wider uppercase opacity-50">
+                              {t('updates.from')}
+                            </span>
+                            <span className="rounded border border-[var(--glass-border)] bg-[var(--glass-bg)] px-1.5 py-0.5 font-mono text-[10px] opacity-80">
+                              {installedVersion}
+                            </span>
+                          </div>
+                        )}
+                        {installedVersion && latestVersion && (
+                          <ArrowRight className="h-3 w-3 text-[var(--text-muted)] opacity-30" />
+                        )}
+                        {latestVersion && (
+                          <div className="flex items-center gap-1.5 text-[var(--status-success-fg)]">
+                            <span className="text-[10px] font-bold tracking-wider uppercase opacity-50">
+                              {t('updates.to')}
+                            </span>
+                            <span className="rounded border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-1.5 py-0.5 font-mono text-[10px] font-bold">
+                              {latestVersion}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Buttons: stack vertically on very small screens */}
-                  <div className="flex flex-shrink-0 items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-shrink-0">
                     <button
                       onClick={() => handleSkipUpdate(update.entity_id)}
-                      className="hidden rounded-xl bg-[var(--glass-bg-hover)] px-3 py-2 text-[10px] font-bold tracking-widest text-[var(--text-secondary)] uppercase transition-all hover:bg-[var(--glass-bg)] hover:text-[var(--text-primary)] sm:block"
+                      className="rounded-xl bg-[var(--glass-bg-hover)] px-3 py-2 text-[10px] font-bold tracking-widest text-[var(--text-secondary)] uppercase transition-all hover:bg-[var(--glass-bg)] hover:text-[var(--text-primary)]"
                     >
                       {t('updates.skip')}
                     </button>
@@ -1741,16 +1742,6 @@ export default function ConfigModal({
                       {isInstalling ? t('updates.installing') : t('updates.update')}
                     </button>
                   </div>
-                </div>
-
-                {/* Mobile skip button */}
-                <div className="mt-2 flex justify-end sm:hidden">
-                  <button
-                    onClick={() => handleSkipUpdate(update.entity_id)}
-                    className="rounded-lg bg-[var(--glass-bg-hover)] px-3 py-1.5 text-[10px] font-bold tracking-widest text-[var(--text-secondary)] uppercase"
-                  >
-                    {t('updates.skip')}
-                  </button>
                 </div>
               </div>
 
