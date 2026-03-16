@@ -39,6 +39,13 @@ const apiRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const assetFallbackRateLimiter = rateLimit({
+  windowMs: Math.max(Number(process.env.ASSET_FALLBACK_RATE_LIMIT_WINDOW_MS) || 60_000, 1_000),
+  max: Math.max(Number(process.env.ASSET_FALLBACK_RATE_LIMIT_MAX) || 120, 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use('/api', apiRateLimiter);
 
 // Ingress support — strip X-Ingress-Path prefix from request URL
@@ -106,7 +113,7 @@ if (isProduction) {
       })
     );
 
-    app.get('/assets/*', (req, res, next) => {
+    app.get('/assets/*', assetFallbackRateLimiter, (req, res, next) => {
       const requested = basename(req.path || '');
       if (!requested) return next();
 

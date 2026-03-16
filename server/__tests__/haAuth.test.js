@@ -174,6 +174,25 @@ describe('createHomeAssistantAuthMiddleware', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
+  it('parses bearer tokens without regex backtracking on padded headers', async () => {
+    const validateHomeAssistantUser = vi.fn().mockResolvedValue({ id: 'user-123' });
+    const middleware = createHomeAssistantAuthMiddleware({ validateHomeAssistantUser });
+    const req = createRequest({
+      authorization: `  Bearer ${' '.repeat(256)}token-1  `,
+      'x-ha-url': 'https://ha.example',
+    });
+    const res = createResponse();
+    const next = vi.fn();
+
+    await middleware(req, res, next);
+
+    expect(validateHomeAssistantUser).toHaveBeenCalledWith({
+      haUrl: 'https://ha.example',
+      accessToken: 'token-1',
+    });
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
   it('returns 503 when Home Assistant is unreachable instead of forcing an auth failure', async () => {
     const validateHomeAssistantUser = vi
       .fn()

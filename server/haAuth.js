@@ -151,10 +151,12 @@ const getBearerToken = (req) => {
   const authHeader = req.get('authorization');
   if (typeof authHeader !== 'string') return null;
 
-  const match = /^Bearer\s+(.+)$/i.exec(authHeader.trim());
-  if (!match?.[1]) return null;
+  const trimmedHeader = authHeader.trim();
+  if (trimmedHeader.length <= 7 || !trimmedHeader.toLowerCase().startsWith('bearer ')) {
+    return null;
+  }
 
-  const token = match[1].trim();
+  const token = trimmedHeader.slice(7).trim();
   return token || null;
 };
 
