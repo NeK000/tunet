@@ -29,17 +29,6 @@ export const formatDuration = (seconds) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export const parseMarkdown = (text) => {
-  if (!text) return '';
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-    .replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-[var(--accent-color)] hover:underline">$1</a>'
-    )
-    .replace(/\n/g, '<br />');
-};
-
 /** Check if an entity belongs to a togglable domain. */
 export const isToggleEntity = (id) => {
   const domain = id?.split('.')?.[0];

@@ -53,7 +53,8 @@ const resolveKeepLimit = (rawLimit) => {
 
 const normalizeDeviceLabel = (value) => {
   if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
+  // eslint-disable-next-line no-control-regex
+  const trimmed = value.replace(/[\x00-\x1f\x7f]/g, '').trim();
   return trimmed ? trimmed.slice(0, 120) : null;
 };
 

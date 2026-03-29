@@ -141,6 +141,10 @@ if (isProduction) {
           if (filePath.endsWith('.html')) {
             setNoCacheHeaders(res);
           }
+          if (filePath.endsWith('sw.js')) {
+            setNoCacheHeaders(res);
+            res.setHeader('Service-Worker-Allowed', '/');
+          }
         },
       })
     );
