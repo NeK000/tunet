@@ -76,7 +76,17 @@ export function createProfile({ ha_user_id, name, device_label, data }) {
   });
 }
 
-export function updateProfile(id, { ha_user_id, name, device_label, data } = {}) {
+/**
+ * @param {string} id
+ * @param {{
+ *   ha_user_id?: string,
+ *   name?: string,
+ *   device_label?: string | null,
+ *   data?: unknown,
+ * }} [payload]
+ */
+export function updateProfile(id, payload = {}) {
+  const { ha_user_id, name, device_label, data } = payload;
   const body = {};
   if (ha_user_id !== undefined) body.ha_user_id = ha_user_id;
   if (name !== undefined) body.name = name;
