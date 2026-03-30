@@ -15,7 +15,7 @@ const MemoStatusBar = memo(StatusBar);
 const MemoDashboardGrid = memo(DashboardGrid);
 const MemoModalManager = memo(ModalManager);
 
-/** @param {Record<string, unknown>} props */
+/** @param {any} props */
 export default function DashboardLayout(props) {
   const {
     resolvedAppFontFamily,
@@ -110,12 +110,12 @@ export default function DashboardLayout(props) {
   return (
     <div
       className="min-h-screen overflow-x-hidden font-sans transition-colors duration-500 selection:bg-[var(--accent-bg)]"
-      style={{
+      style={/** @type {any} */ ({
         backgroundColor: 'var(--bg-primary)',
         color: 'var(--text-primary)',
         '--font-sans': resolvedAppFontFamily,
         fontFamily: resolvedAppFontFamily,
-      }}
+      })}
     >
       <a
         href="#main-content"

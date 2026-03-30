@@ -1,10 +1,20 @@
 import { useState, useRef } from 'react';
 import { CHART_STATUS_COLORS, getThresholdColor } from '../../utils/chartColors';
 
-export default function InteractivePowerGraph({ data, currentIndex, t, locale, unit }) {
+/**
+ * @param {Object} props
+ * @param {any} props.data
+ * @param {any} props.currentIndex
+ * @param {Function} props.t
+ * @param {string} [props.locale]
+ * @param {string} [props.language]
+ * @param {string} [props.unit]
+ * @param {any} [props.priceStats]
+ */
+export default function InteractivePowerGraph({ data, currentIndex, t, locale, language, unit }) {
   const translate = t || ((key) => key);
   const currency = unit || translate('power.ore');
-  const timeLocale = locale || 'en-GB';
+  const timeLocale = locale || language || 'en-GB';
   const [hoverIndex, setHoverIndex] = useState(null);
   const svgRef = useRef(null);
   if (!data || data.length === 0) return null;

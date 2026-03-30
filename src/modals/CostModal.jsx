@@ -211,7 +211,7 @@ export default function CostModal({
 
         const rawSeries = points
           .map((p) => ({ value: p.value, time: p.time }))
-          .sort((a, b) => a.time - b.time);
+          .sort((a, b) => a.time.getTime() - b.time.getTime());
         const lineSeries = ensureRangeCoverage(rawSeries, start, end);
         const bucketed = buildBuckets(rawSeries, rangeHours);
         const deltaSeries = buildDeltaSeries(bucketed);

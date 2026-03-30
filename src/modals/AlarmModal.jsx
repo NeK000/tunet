@@ -157,6 +157,7 @@ export default function AlarmModal({
   entity,
   callService,
   customName,
+  customIcon: _customIcon,
   t,
 }) {
   const [pin, setPin] = useState('');

@@ -9,7 +9,7 @@ import AccessibleModalShell from '../components/ui/AccessibleModalShell';
  *
  * @param {Object} props
  * @param {boolean} props.show - Whether modal is visible
- * @param {Function} props.onClose - Close handler
+ * @param {(e?: any) => void} props.onClose - Close handler
  * @param {Object} props.conn - Home Assistant WebSocket connection
  * @param {Object} props.entities - All HA entities
  * @param {Object} props.settings - Card settings (contains todoEntityId)

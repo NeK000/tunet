@@ -13,7 +13,7 @@
  */
 
 /**
- * @typedef {Object<string, { state?: string, attributes?: Record<string, unknown> }>} EntityMap
+ * @typedef {Object<string, { state?: string, entity_id?: string, attributes?: Record<string, any> }>} EntityMap
  */
 
 /**
@@ -68,9 +68,9 @@
  * @property {boolean} entitiesLoaded
  * @property {boolean} entityDataStale
  * @property {boolean} oauthExpired
- * @property {unknown} conn
+ * @property {any} conn
  * @property {string} activeUrl
- * @property {Record<string, unknown> | null} haConfig
+ * @property {Record<string, any> | null} haConfig
  * @property {number} lastEntityUpdateAt
  * @property {number | null} disconnectedSince
  * @property {import('react').MutableRefObject<unknown>} authRef
@@ -138,7 +138,7 @@
  */
 
 /**
- * @typedef {Record<string, Record<string, unknown>>} PageSettingsMap
+ * @typedef {Record<string, Record<string, any>>} PageSettingsMap
  */
 
 /**
@@ -154,6 +154,23 @@
  * @property {boolean} showClock
  * @property {boolean} showClockOnMobile
  * @property {boolean} showDate
+ */
+
+/**
+ * @typedef {Object} StatusPillConfig
+ * @property {string} id
+ * @property {string} type - 'alarm' | 'media_player' | 'emby' | 'sonos' | 'sensor' etc.
+ * @property {boolean} [visible]
+ * @property {boolean} [clickable]
+ * @property {string} [entityId]
+ * @property {string} [mediaFilter]
+ * @property {string} [mediaFilterMode]
+ * @property {string[]} [mediaEntityIds]
+ * @property {boolean} [showCount]
+ * @property {string} [mediaSelectionMode]
+ * @property {string} [sonosHeadingSource]
+ * @property {string} [playerNameDisplayFilter]
+ * @property {string[]} [sessionSensorIds]
  */
 
 /**
@@ -199,8 +216,8 @@
  * @property {(val: number) => void} setGridGapH
  * @property {number} gridGapV
  * @property {(val: number) => void} setGridGapV
- * @property {unknown[]} statusPillsConfig
- * @property {(newConfig: unknown[]) => void} saveStatusPillsConfig
+ * @property {StatusPillConfig[]} statusPillsConfig
+ * @property {(newConfig: StatusPillConfig[]) => void} saveStatusPillsConfig
  * @property {number} cardBorderRadius
  * @property {(val: number) => void} setCardBorderRadius
  */
@@ -212,11 +229,13 @@
  * @property {PageSettingsMap} pageSettings
  * @property {(newSettings: PageSettingsMap) => void} persistPageSettings
  * @property {(id: string, setting: string, value: unknown) => void} savePageSetting
- * @property {Record<string, { label?: string }>} pageDefaults
+ * @property {Record<string, { label?: string, icon?: any }>} pageDefaults
  * @property {string} activePage
  * @property {(pageId: string) => void} setActivePage
  * @property {boolean} showAddPageModal
  * @property {(show: boolean) => void} setShowAddPageModal
+ * @property {boolean} [showAddCardModal]
+ * @property {(show: boolean) => void} [setShowAddCardModal]
  * @property {(key: string) => string} t
  */
 

@@ -24,7 +24,7 @@ const formatValue = (val) => {
  *
  * @param {Object} props
  * @param {boolean} props.show - Whether modal is visible
- * @param {Function} props.onClose - Function to close modal
+ * @param {(e?: any) => void} props.onClose - Function to close modal
  * @param {Object} props.entities - All Home Assistant entities
  * @param {Function} props.callService - Function to call HA services
  * @param {Function} props.getS - Function to get entity state
@@ -286,8 +286,8 @@ export default function LeafModal({ show, onClose, entities, callService, getS, 
                     height="100%"
                     frameBorder="0"
                     scrolling="no"
-                    marginHeight="0"
-                    marginWidth="0"
+                    marginHeight={0}
+                    marginWidth={0}
                     src={`https://www.openstreetmap.org/export/embed.html?bbox=${long - 0.005}%2C${lat - 0.005}%2C${long + 0.005}%2C${lat + 0.005}&layer=mapnik&marker=${lat}%2C${long}`}
                     style={{ filter: 'invert(0.9) grayscale(0.8) contrast(1.2) brightness(0.8)' }}
                     className="h-full w-full opacity-70 transition-opacity duration-500 group-hover:opacity-100"

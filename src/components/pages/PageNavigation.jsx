@@ -8,14 +8,10 @@ import { useModalState, usePages } from '../../contexts';
  *
  * @param {Object} props
  * @param {Array} props.pages - Array of page objects with id, label, icon
- * @param {Object} props.pageSettings - Settings for each page (label, icon, hidden)
  * @param {string} props.activePage - Currently active page ID
  * @param {Function} props.setActivePage - Function to change active page
  * @param {boolean} props.editMode - Whether edit mode is active
  * @param {Function} props.setEditingPage - Function to open page edit modal
- * @param {Function} props.setShowAddPageModal - Function to open add page modal
- * @param {Object} props.pagesConfig - Full pages config
- * @param {Function} props.persistConfig - Persist updated pages config
  * @param {Function} props.t - Translation function
  */
 export default function PageNavigation({

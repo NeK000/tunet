@@ -1,6 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X } from '../../icons';
 
+/**
+ * @param {Object} props
+ * @param {boolean} props.open
+ * @param {(e?: any) => void} props.onClose
+ * @param {string} props.title
+ * @param {React.ReactNode} props.children
+ * @param {any} [props.icon]
+ * @param {string} [props.testId]
+ */
 export default function SidebarContainer({ open, onClose, title, children, icon: Icon, testId }) {
   const panelRef = useRef(null);
   const [isColorPickerActive, setIsColorPickerActive] = useState(false);

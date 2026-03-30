@@ -9,9 +9,10 @@ import AccessibleModalShell from '../components/ui/AccessibleModalShell';
  *
  * @param {Object} props
  * @param {boolean} props.show - Whether modal is visible
- * @param {Function} props.onClose - Function to close modal
+ * @param {(e?: any) => void} props.onClose - Function to close modal
  * @param {Object} props.conn - Home Assistant connection
  * @param {Object} props.entities - All HA entities
+ * @param {string} [props.language] - Language code
  * @param {Function} props.t - Translation function
  */
 export default function CalendarModal({ show, onClose, conn, entities, language, t }) {
@@ -121,7 +122,7 @@ export default function CalendarModal({ show, onClose, conn, entities, language,
   const sortedDates = Object.keys(groupedEvents).sort((a, b) => {
     const dateA = groupedEvents[a][0]?.start;
     const dateB = groupedEvents[b][0]?.start;
-    return new Date(dateA) - new Date(dateB);
+    return new Date(dateA).getTime() - new Date(dateB).getTime();
   });
 
   if (!show) return null;
@@ -206,7 +207,7 @@ export default function CalendarModal({ show, onClose, conn, entities, language,
                     </h4>
                     <div className="space-y-3">
                       {groupedEvents[dateKey]
-                        .sort((a, b) => new Date(a.start) - new Date(b.start))
+                        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
                         .map((event, idx) => {
                           const startTime = new Date(event.start);
                           const isAllDay = event.start.length === 10; // Date only, no time

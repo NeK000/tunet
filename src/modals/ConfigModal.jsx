@@ -45,6 +45,7 @@ import {
 
 const SETTINGS_STATIC_VERSION = '1.10.0';
 
+/** @param {any} props */
 export default function ConfigModal({
   open,
   isOnboardingActive,

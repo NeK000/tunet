@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 
+/**
+ * @param {Object} props
+ * @param {string} props.label
+ * @param {any} props.icon
+ * @param {string[]} props.options
+ * @param {string} props.current
+ * @param {Function} props.onChange
+ * @param {Record<string, string>} [props.map]
+ * @param {string} [props.placeholder]
+ * @param {Function} [props.t]
+ */
 export default function ModernDropdown({
   label,
   icon: Icon,

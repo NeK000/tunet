@@ -23,6 +23,16 @@ const createBezierPath = (points, smoothing = 0.3) => {
   }, '');
 };
 
+/**
+ * @param {Object} props
+ * @param {Array} props.data
+ * @param {number} [props.height]
+ * @param {string} [props.color]
+ * @param {string} [props.noDataLabel]
+ * @param {Function} [props.formatXLabel]
+ * @param {string} [props.strokeColor]
+ * @param {string} [props.areaColor]
+ */
 export default function SensorHistoryGraph({
   data,
   height = 200,
@@ -87,6 +97,7 @@ export default function SensorHistoryGraph({
       const label = formatXLabel
         ? formatXLabel(new Date(point.time))
         : new Date(point.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      /** @type {'start' | 'end' | 'middle'} */
       const anchor = i === 0 ? 'start' : i === numLabels - 1 ? 'end' : 'middle';
       xLabels.push({ x, label, anchor });
     }

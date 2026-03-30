@@ -9,7 +9,7 @@ import AccessibleModalShell from '../components/ui/AccessibleModalShell';
  *
  * @param {Object} props
  * @param {boolean} props.show - Whether modal is visible
- * @param {Function} props.onClose - Function to close modal
+ * @param {(e?: any) => void} props.onClose - Function to close modal
  * @param {Object} props.entity - Nordpool sensor entity with price data
  * @param {Array} props.fullPriceData - Complete price data array with { start, end, value }
  * @param {number} props.currentPriceIndex - Index of current price

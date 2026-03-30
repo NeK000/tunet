@@ -8,6 +8,7 @@ import { createDragAndDropHandlers } from '../utils/dragAndDrop';
 import { dispatchCardRender } from '../rendering/registry';
 import EditOverlay from '../components/ui/EditOverlay';
 
+/** @param {any} params */
 export function useCardRendering({
   editMode,
   pagesConfig,
@@ -373,12 +374,12 @@ export function useCardRendering({
             key={`${cardId}-render-error`}
             {...dragProps}
             className="flex h-full w-full items-center justify-center rounded-2xl border p-3 text-center text-xs"
-            style={{
+            style={/** @type {any} */ ({
               ...cardStyle,
               backgroundColor: 'var(--glass-bg)',
               borderColor: 'var(--glass-border)',
               color: 'var(--text-secondary)',
-            }}
+            })}
           >
             {t('card.error.render')}
           </div>

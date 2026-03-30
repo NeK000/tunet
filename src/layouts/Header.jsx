@@ -9,9 +9,11 @@ import { useConfig } from '../contexts';
  * @param {string} props.headerTitle - Main title
  * @param {number} props.headerScale - Scale factor for header size
  * @param {boolean} props.editMode - Whether in edit mode
- * @param {Object} props.headerSettings - Header visibility settings
+ * @param {Object} [props.headerSettings] - Header visibility settings
  * @param {Function} props.setShowHeaderEditModal - Show header edit modal
  * @param {Function} props.t - Translation function
+ * @param {boolean} [props.isMobile] - Whether on mobile viewport
+ * @param {import('../types/dashboard.js').SectionSpacing} [props.sectionSpacing] - Section spacing
  * @param {React.ReactNode} [props.children] - Optional children content
  */
 export default function Header({
@@ -73,6 +75,7 @@ export default function Header({
   const dateScale = headerSettings?.dateScale ?? 1.0;
   const locale = getLocaleForLanguage(language);
 
+  /** @type {Intl.DateTimeFormatOptions} */
   const timeOptions = is12h
     ? { hour: 'numeric', minute: '2-digit', hour12: true }
     : { hour: '2-digit', minute: '2-digit', hour12: false };

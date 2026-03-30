@@ -304,7 +304,10 @@ function AddCardContent({
   const excludedHeader = useMemo(() => new Set(pagesConfig.header || []), [pagesConfig]);
   const excludedSettings = useMemo(() => new Set(pagesConfig.settings || []), [pagesConfig]);
 
-  /** Reusable entity list item button. */
+  /**
+   * Reusable entity list item button.
+   * @param {{ id: string, isSelected: boolean, onClick: (e?: any) => void, badgeText?: string, displayName?: string }} props
+   */
   const EntityItem = ({ id, isSelected, onClick, badgeText, displayName }) => (
     <button
       type="button"

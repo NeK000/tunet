@@ -5,19 +5,13 @@ import { useHomeAssistant, useModalState, usePages } from '../contexts';
 /**
  * StatusBar component showing various status indicators
  * @param {Object} props
- * @param {Object} props.entities - Home Assistant entities
- * @param {Date} props.now - Current time
- * @param {Function} props.setActiveMediaId - Set active media player
- * @param {Function} props.setActiveMediaGroupKey - Set media group key
- * @param {Function} props.setActiveMediaModal - Set active media modal
- * @param {Function} props.setShowAlarmModal - Open alarm modal
- * @param {Function} props.setShowUpdateModal - Open update modal
+ * @param {boolean} [props.editMode] - Whether in edit mode
  * @param {Function} props.t - Translation function
- * @param {Function} props.isSonosActive - Check if Sonos is active
- * @param {Function} props.isMediaActive - Check if media is active
- * @param {Function} props.getA - Get entity attribute
- * @param {Function} props.getEntityImageUrl - Get entity image URL
- * @param {Array} props.statusPillsConfig - Status pills configuration
+ * @param {(entity: any) => boolean} [props.isSonosActive] - Check if Sonos is active
+ * @param {(entity: any) => boolean} [props.isMediaActive] - Check if media is active
+ * @param {(entityId: string, attr: string, fallback?: any) => any} [props.getA] - Get entity attribute
+ * @param {(url?: string) => string|null} [props.getEntityImageUrl] - Get entity image URL
+ * @param {boolean} [props.isMobile] - Whether on mobile viewport
  */
 export default function StatusBar({
   editMode,

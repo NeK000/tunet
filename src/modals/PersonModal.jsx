@@ -20,7 +20,7 @@ export default function PersonModal({
   entities,
   customName,
   getEntityImageUrl,
-  _conn,
+  conn: _conn,
   t,
   settings,
 }) {

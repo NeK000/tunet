@@ -9,6 +9,13 @@ import { useToast } from '../contexts/ToastContext';
  * callService, isSonosActive, isMediaActive, hvacMap/fanMap/swingMap.
  *
  * Everything is stable-ref (useCallback / useMemo) so consumers don't re-render.
+ * @param {Object} deps
+ * @param {any} deps.entities
+ * @param {any} deps.conn
+ * @param {any} deps.activeUrl
+ * @param {any} [deps.now]
+ * @param {Function} deps.t
+ * @param {string} [deps.language]
  */
 export function useEntityHelpers({ entities, conn, activeUrl, now, t }) {
   const { addToast } = useToast();

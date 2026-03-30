@@ -38,7 +38,7 @@ function formatLastCleaned(timestamp, t) {
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return String(timestamp);
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+/** @param {any} params */
 export function useAppViewModels(params) {
   const {
     activePage,

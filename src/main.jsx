@@ -86,8 +86,8 @@ class ErrorBoundary extends Component {
                 transition: 'all 0.2s',
                 boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
               }}
-              onMouseOver={(e) => (e.target.style.background = '#2563eb')}
-              onMouseOut={(e) => (e.target.style.background = '#3b82f6')}
+              onMouseOver={(e) => (/** @type {HTMLElement} */ (e.target).style.background = '#2563eb')}
+              onMouseOut={(e) => (/** @type {HTMLElement} */ (e.target).style.background = '#3b82f6')}
               onFocus={(e) => (e.target.style.background = '#2563eb')}
               onBlur={(e) => (e.target.style.background = '#3b82f6')}
             >

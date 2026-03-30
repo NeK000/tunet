@@ -1,3 +1,13 @@
+/**
+ * @param {Object} params
+ * @param {any} params.areas
+ * @param {any} params.areaEntitiesById
+ * @param {any} params.pagesConfig
+ * @param {any} params.addCardTargetPage
+ * @param {any} params.cardSettings
+ * @param {any} params.getCardSettingsKey
+ * @param {number} [params.timestamp]
+ */
 export function buildRoomCardsPayload({
   areas,
   areaEntitiesById,

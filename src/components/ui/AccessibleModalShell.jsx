@@ -8,6 +8,16 @@ const PRIORITY_FOCUS_SELECTOR =
 /**
  * Shared accessible modal shell with dialog semantics and focus management.
  * Keep visual styling in each modal by passing overlay/panel classes and styles.
+ * @param {Object} props
+ * @param {boolean} props.open
+ * @param {(e?: any) => void} props.onClose
+ * @param {string} [props.titleId]
+ * @param {string} [props.describedBy]
+ * @param {string} [props.overlayClassName]
+ * @param {Object} [props.overlayStyle]
+ * @param {string} [props.panelClassName]
+ * @param {Object} [props.panelStyle]
+ * @param {Function} props.children
  */
 export default function AccessibleModalShell({
   open,

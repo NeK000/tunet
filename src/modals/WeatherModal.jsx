@@ -276,7 +276,7 @@ export default function WeatherModal({
               return { value, time };
             })
             .filter(Boolean)
-            .sort((a, b) => a.time - b.time);
+            .sort((a, b) => a.time.getTime() - b.time.getTime());
           setHistorySeries(mappedHistory);
         }
       } catch {

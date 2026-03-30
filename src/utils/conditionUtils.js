@@ -208,6 +208,14 @@ export function evaluateEntityCondition({ condition, entity, getAttribute }) {
   return Date.now() - referenceTimestamp >= durationSeconds * 1000;
 }
 
+/**
+ * @param {Object} params
+ * @param {Object} params.condition
+ * @param {Object} [params.entity]
+ * @param {Object} [params.entities]
+ * @param {Function} [params.getAttribute]
+ * @param {string} [params.fallbackEntityId]
+ */
 export function evaluateVisibilityConditionConfig({
   condition,
   entity,

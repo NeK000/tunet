@@ -342,12 +342,12 @@ function sanitizeHttpImageSrc(value) {
  * @param {Function} props.callService - HA service call
  * @param {Function} props.getA - Get entity attribute
  * @param {Function} props.getEntityImageUrl - Resolve entity/media image URL
- * @param {Function} props.isMediaActive - Is media active
+ * @param {(entity: any) => boolean} props.isMediaActive - Is media active
  * @param {Function} props.isSonosActive - Is Sonos active
  * @param {Function} props.t - Translation function
  * @param {Function} props.formatDuration - Format seconds to duration
  * @param {Function} props.getServerInfo - Media server metadata
- * @param {unknown} props.conn - HA websocket connection
+ * @param {any} props.conn - HA websocket connection
  */
 export default function MediaModal({
   show,
