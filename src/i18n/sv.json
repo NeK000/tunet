@@ -751,6 +751,8 @@
   "settings.background": "Bakgrund",
   "settings.behavior": "Beteende",
   "settings.bgAurora": "Norrsken",
+  "settings.bgLavaLamp": "Lavalampa",
+  "settings.bgSilk": "Silke",
   "settings.bgCustom": "Egen bild",
   "settings.bgFollowTheme": "Följ tema",
   "settings.bgFollowThemeHint": "Bakgrunden anpassas automatiskt baserat på valt tema.",

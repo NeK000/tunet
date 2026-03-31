@@ -167,6 +167,8 @@
   "settings.bgGradient": "Gradient",
   "settings.bgCustom": "Eget bilde",
   "settings.bgAurora": "Aurora",
+  "settings.bgLavaLamp": "Lavalampe",
+  "settings.bgSilk": "Silke",
   "settings.bgFollowThemeHint": "Bakgrunnen følger valgt tema",
   "settings.bgUpload": "Last opp",
   "settings.bgUrl": "Bilde-URL",

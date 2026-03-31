@@ -751,6 +751,8 @@
   "settings.background": "Bakgrunn",
   "settings.behavior": "Åtferd",
   "settings.bgAurora": "Nordlys",
+  "settings.bgLavaLamp": "Lavalampe",
+  "settings.bgSilk": "Silke",
   "settings.bgCustom": "Eige bilete",
   "settings.bgFollowTheme": "Følg tema",
   "settings.bgFollowThemeHint": "Bakgrunnen tilpassar seg automatisk basert på valt tema.",

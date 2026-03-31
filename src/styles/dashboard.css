@@ -420,9 +420,10 @@ html[data-theme='flat'] .battery-bar__nub {
 
 /* ── Card Material Variants ── */
 
-/* Neumorphic: soft 3D embossed look */
+/* Neumorphic: soft 3D embossed look — opaque bg required to avoid corner artifacts */
 html[data-card-material='neumorphic'] .touch-feedback,
 html[data-card-material='neumorphic'] [style*='--card-bg'] {
+  background-color: var(--bg-secondary) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow:
@@ -437,6 +438,7 @@ html[data-card-material='neumorphic'] .touch-feedback:hover {
 }
 html[data-theme='light'][data-card-material='neumorphic'] .touch-feedback,
 html[data-theme='light'][data-card-material='neumorphic'] [style*='--card-bg'] {
+  background-color: #ffffff !important;
   box-shadow:
     6px 6px 14px rgba(0, 0, 0, 0.08),
     -4px -4px 10px rgba(255, 255, 255, 0.6) !important;
@@ -461,9 +463,12 @@ html[data-card-material='flat'] .touch-feedback:hover {
   box-shadow: none !important;
 }
 
-/* Elevated: strong drop shadow, floating look */
+/* Elevated: strong drop shadow, floating look — opaque bg + no blur to avoid corner artifacts */
 html[data-card-material='elevated'] .touch-feedback,
 html[data-card-material='elevated'] [style*='--card-bg'] {
+  background-color: var(--bg-secondary) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.2),
     0 2px 6px rgba(0, 0, 0, 0.1) !important;
@@ -477,6 +482,7 @@ html[data-card-material='elevated'] .touch-feedback:hover {
 }
 html[data-theme='light'][data-card-material='elevated'] .touch-feedback,
 html[data-theme='light'][data-card-material='elevated'] [style*='--card-bg'] {
+  background-color: #ffffff !important;
   box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.08),
     0 2px 6px rgba(0, 0, 0, 0.04) !important;

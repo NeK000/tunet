@@ -751,6 +751,8 @@
   "settings.background": "背景",
   "settings.behavior": "行为",
   "settings.bgAurora": "极光",
+  "settings.bgLavaLamp": "熔岩灯",
+  "settings.bgSilk": "丝绸",
   "settings.bgCustom": "自定义图片",
   "settings.bgFollowTheme": "跟随主题",
   "settings.bgFollowThemeHint": "背景将根据所选主题自动适应。",

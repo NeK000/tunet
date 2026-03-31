@@ -15,6 +15,8 @@ import {
   Globe,
   LayoutGrid,
   Type,
+  Flame,
+  Feather,
 } from '../../icons';
 import SidebarContainer from './SidebarContainer';
 
@@ -81,6 +83,8 @@ export default function ThemeSidebar({
     { key: 'solid', icon: Sun, label: t('settings.bgSolid') },
     { key: 'gradient', icon: Moon, label: t('settings.bgGradient') },
     { key: 'animated', icon: Sparkles, label: t('settings.bgAurora') },
+    { key: 'lavaLamp', icon: Flame, label: t('settings.bgLavaLamp') },
+    { key: 'silk', icon: Feather, label: t('settings.bgSilk') },
   ];
 
   const resetBackground = () => {
@@ -243,6 +247,154 @@ export default function ThemeSidebar({
 
         <div className="h-px" style={{ backgroundColor: 'var(--glass-border)' }} />
 
+        {/* Background */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p
+              className="pl-1 text-xs font-bold tracking-widest uppercase"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {t('settings.background')}
+            </p>
+            <button
+              type="button"
+              onClick={resetBackground}
+              className="rounded-sm px-2 py-1 text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase transition-colors hover:bg-[var(--glass-bg-hover)]"
+            >
+              {t('settings.reset')}
+            </button>
+          </div>
+
+          {/* Mode Selector - Compact */}
+          <div className="grid grid-cols-3 gap-2">
+            {bgModes.map((mode) => {
+              const active = bgMode === mode.key;
+              const ModeIcon = mode.icon;
+              return (
+                <button
+                  key={mode.key}
+                  onClick={() => setBgMode(mode.key)}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center transition-all ${
+                    active
+                      ? 'border-[var(--accent-color)] bg-[var(--accent-bg)] text-[var(--accent-color)]'
+                      : 'border-transparent text-[var(--text-secondary)] hover:bg-white/10'
+                  }`}
+                  style={!active ? { backgroundColor: 'var(--glass-bg)' } : {}}
+                >
+                  <ModeIcon className="h-4 w-4" />
+                  <span className="text-[9px] leading-tight font-bold tracking-wider uppercase">
+                    {mode.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mode-specific controls */}
+          {bgMode === 'theme' && (
+            <div
+              className="rounded-xl border p-3 text-center"
+              style={{ backgroundColor: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}
+            >
+              <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {t('settings.bgFollowThemeHint')}
+              </p>
+            </div>
+          )}
+
+          {bgMode === 'solid' && (
+            <div className="flex items-center gap-4 py-2">
+              <div
+                className="group relative h-12 w-12 cursor-pointer overflow-hidden rounded-xl border shadow-lg"
+                style={{ borderColor: 'var(--glass-border)' }}
+              >
+                <input
+                  type="color"
+                  value={bgColor}
+                  onChange={(e) => setBgColor(e.target.value)}
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                />
+                <div
+                  className="h-full w-full transition-colors"
+                  style={{ backgroundColor: bgColor }}
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={bgColor}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^#[0-9a-fA-F]{0,6}$/.test(val)) setBgColor(val);
+                  }}
+                  className="w-full rounded-xl border px-3 py-2.5 font-mono text-sm uppercase transition-colors outline-none focus:border-[var(--glass-border)]"
+                  style={{
+                    backgroundColor: 'var(--glass-bg)',
+                    borderColor: 'var(--glass-border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  placeholder="#0f172a"
+                  maxLength={7}
+                />
+              </div>
+            </div>
+          )}
+
+          {bgMode === 'gradient' && (
+            <div className="flex flex-wrap gap-3 py-2">
+              {Object.entries(GRADIENT_PRESETS).map(([key, preset]) => {
+                const active = bgGradient === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setBgGradient(key)}
+                    className="group relative flex-shrink-0"
+                    title={preset.label}
+                  >
+                    <div
+                      className={`h-12 w-12 rounded-xl transition-all ${
+                        active
+                          ? 'scale-105 ring-2 ring-[var(--accent-color)]'
+                          : 'opacity-80 hover:scale-105 hover:opacity-100'
+                      }`}
+                      style={{
+                        background: `linear-gradient(135deg, ${preset.from}, ${preset.to})`,
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {bgMode === 'custom' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={bgImage}
+                    onChange={(e) => setBgImage(e.target.value)}
+                    className="w-full rounded-xl border px-4 py-3 pl-10 text-xs transition-colors outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--glass-border)]"
+                    style={{
+                      backgroundColor: 'var(--glass-bg)',
+                      borderColor: 'var(--glass-border)',
+                      color: 'var(--text-primary)',
+                    }}
+                    placeholder={t('settings.bgUrl')}
+                  />
+                  <LinkIcon
+                    className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+                    style={{ color: 'var(--text-secondary)' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="h-px" style={{ backgroundColor: 'var(--glass-border)' }} />
+
         <div className="space-y-4">
           <p
             className="pl-1 text-xs font-bold tracking-widest uppercase"
@@ -375,152 +527,6 @@ export default function ThemeSidebar({
               </p>
             )}
           </div>
-        </div>
-
-        {/* Background */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p
-              className="pl-1 text-xs font-bold tracking-widest uppercase"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('settings.background')}
-            </p>
-            <button
-              type="button"
-              onClick={resetBackground}
-              className="rounded-sm px-2 py-1 text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase transition-colors hover:bg-[var(--glass-bg-hover)]"
-            >
-              {t('settings.reset')}
-            </button>
-          </div>
-
-          {/* Mode Selector - Compact */}
-          <div className="grid grid-cols-4 gap-2">
-            {bgModes.map((mode) => {
-              const active = bgMode === mode.key;
-              const ModeIcon = mode.icon;
-              return (
-                <button
-                  key={mode.key}
-                  onClick={() => setBgMode(mode.key)}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center transition-all ${
-                    active
-                      ? 'border-[var(--accent-color)] bg-[var(--accent-bg)] text-[var(--accent-color)]'
-                      : 'border-transparent text-[var(--text-secondary)] hover:bg-white/10'
-                  }`}
-                  style={!active ? { backgroundColor: 'var(--glass-bg)' } : {}}
-                >
-                  <ModeIcon className="h-4 w-4" />
-                  <span className="text-[9px] leading-tight font-bold tracking-wider uppercase">
-                    {mode.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Mode-specific controls */}
-          {bgMode === 'theme' && (
-            <div
-              className="rounded-xl border p-3 text-center"
-              style={{ backgroundColor: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}
-            >
-              <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {t('settings.bgFollowThemeHint')}
-              </p>
-            </div>
-          )}
-
-          {bgMode === 'solid' && (
-            <div className="flex items-center gap-4 py-2">
-              <div
-                className="group relative h-12 w-12 cursor-pointer overflow-hidden rounded-xl border shadow-lg"
-                style={{ borderColor: 'var(--glass-border)' }}
-              >
-                <input
-                  type="color"
-                  value={bgColor}
-                  onChange={(e) => setBgColor(e.target.value)}
-                  className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                />
-                <div
-                  className="h-full w-full transition-colors"
-                  style={{ backgroundColor: bgColor }}
-                />
-              </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={bgColor}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (/^#[0-9a-fA-F]{0,6}$/.test(val)) setBgColor(val);
-                  }}
-                  className="w-full rounded-xl border px-3 py-2.5 font-mono text-sm uppercase transition-colors outline-none focus:border-[var(--glass-border)]"
-                  style={{
-                    backgroundColor: 'var(--glass-bg)',
-                    borderColor: 'var(--glass-border)',
-                    color: 'var(--text-primary)',
-                  }}
-                  placeholder="#0f172a"
-                  maxLength={7}
-                />
-              </div>
-            </div>
-          )}
-
-          {bgMode === 'gradient' && (
-            <div className="flex flex-wrap gap-3 py-2">
-              {Object.entries(GRADIENT_PRESETS).map(([key, preset]) => {
-                const active = bgGradient === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setBgGradient(key)}
-                    className="group relative flex-shrink-0"
-                    title={preset.label}
-                  >
-                    <div
-                      className={`h-12 w-12 rounded-xl transition-all ${
-                        active
-                          ? 'scale-105 ring-2 ring-[var(--accent-color)]'
-                          : 'opacity-80 hover:scale-105 hover:opacity-100'
-                      }`}
-                      style={{
-                        background: `linear-gradient(135deg, ${preset.from}, ${preset.to})`,
-                      }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {bgMode === 'custom' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-3">
-                <div className="relative">
-                  <input
-                    type="url"
-                    value={bgImage}
-                    onChange={(e) => setBgImage(e.target.value)}
-                    className="w-full rounded-xl border px-4 py-3 pl-10 text-xs transition-colors outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--glass-border)]"
-                    style={{
-                      backgroundColor: 'var(--glass-bg)',
-                      borderColor: 'var(--glass-border)',
-                      color: 'var(--text-primary)',
-                    }}
-                    placeholder={t('settings.bgUrl')}
-                  />
-                  <LinkIcon
-                    className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-                    style={{ color: 'var(--text-secondary)' }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="h-px" style={{ backgroundColor: 'var(--glass-border)' }} />

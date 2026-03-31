@@ -1,4 +1,6 @@
 import AuroraBackground from '../components/effects/AuroraBackground';
+import LavaLampBackground from '../components/effects/LavaLampBackground';
+import SilkBackground from '../components/effects/SilkBackground';
 import { useConfig } from '../contexts';
 
 /**
@@ -9,6 +11,14 @@ export default function BackgroundLayer() {
 
   if (bgMode === 'animated') {
     return <AuroraBackground />;
+  }
+
+  if (bgMode === 'lavaLamp') {
+    return <LavaLampBackground />;
+  }
+
+  if (bgMode === 'silk') {
+    return <SilkBackground />;
   }
 
   return (

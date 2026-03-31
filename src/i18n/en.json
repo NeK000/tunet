@@ -751,6 +751,8 @@
   "settings.background": "Background",
   "settings.behavior": "Behavior",
   "settings.bgAurora": "Aurora",
+  "settings.bgLavaLamp": "Lava lamp",
+  "settings.bgSilk": "Silk",
   "settings.bgCustom": "Custom image",
   "settings.bgFollowTheme": "Follow theme",
   "settings.bgFollowThemeHint": "The background will automatically adapt based on the selected theme.",
