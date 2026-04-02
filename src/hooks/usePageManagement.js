@@ -148,6 +148,15 @@ export function usePageManagement({
       defaultSlug: 'battery',
     });
 
+  const createRoomExplorerPage = () =>
+    createTypedPage({
+      labelKey: 'addCard.type.roomExplorer',
+      fallbackLabel: 'Rooms',
+      defaultIcon: 'Home',
+      defaultType: 'room_explorer',
+      defaultSlug: 'room_explorer',
+    });
+
   // ── Delete a page ──────────────────────────────────────────────────────
   const deletePage = (pageId) => {
     if (!pageId || pageId === 'home') return;
@@ -192,6 +201,7 @@ export function usePageManagement({
     createSonosPage,
     createLightsPage,
     createBatteryPage,
+    createRoomExplorerPage,
     deletePage,
     removeCard,
   };

@@ -1,10 +1,10 @@
 import { LayoutGrid, Plus, UserCircle2 } from '../icons';
-import { MediaPage, SonosPage, LightsPage, BatteryPage } from '../components';
+import { MediaPage, SonosPage, LightsPage, BatteryPage, RoomExplorerPage } from '../components';
 import CardErrorBoundary from '../components/ui/CardErrorBoundary';
 import { formatDuration } from '../utils';
 
 export default function DashboardGrid({ page, media, grid, cards, actions, t }) {
-  const { activePage, pagesConfig, pageSettings, editMode, isMediaPage, isSonosPage, isLightsPage, isBatteryPage } = page;
+  const { activePage, pagesConfig, pageSettings, editMode, isMediaPage, isSonosPage, isLightsPage, isBatteryPage, isRoomExplorerPage } = page;
   const {
     entities,
     conn,
@@ -87,6 +87,22 @@ export default function DashboardGrid({ page, media, grid, cards, actions, t }) 
     return (
       <div key={activePage} className="page-transition">
         <BatteryPage
+          entities={entities}
+          callService={callService}
+          conn={conn}
+          pageSettings={pageSettings}
+          pageId={activePage}
+          savePageSetting={savePageSetting}
+          t={t}
+        />
+      </div>
+    );
+  }
+
+  if (isRoomExplorerPage(activePage)) {
+    return (
+      <div key={activePage} className="page-transition">
+        <RoomExplorerPage
           entities={entities}
           callService={callService}
           conn={conn}

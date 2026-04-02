@@ -16,6 +16,7 @@ export default function AddPageModal({
   onCreateSonos,
   onCreateLights,
   onCreateBattery,
+  onCreateRoomExplorer,
 }) {
   const [activeTab, setActiveTab] = useState('standard');
   const modalTitleId = 'add-page-modal-title';
@@ -90,6 +91,13 @@ export default function AddPageModal({
             className={`flex-1 rounded-full border py-2.5 text-[11px] font-bold tracking-widest uppercase transition-all ${activeTab === 'battery' ? 'border-[var(--accent-color)] bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'border-transparent bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
           >
             {t('addCard.type.battery')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('roomExplorer')}
+            className={`flex-1 rounded-full border py-2.5 text-[11px] font-bold tracking-widest uppercase transition-all ${activeTab === 'roomExplorer' ? 'border-[var(--accent-color)] bg-[var(--accent-bg)] text-[var(--accent-color)]' : 'border-transparent bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+          >
+            {t('addCard.type.roomExplorer')}
           </button>
         </div>
 
@@ -185,6 +193,21 @@ export default function AddPageModal({
               </div>
               <button
                 onClick={onCreateBattery}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--accent-color)] bg-[var(--accent-bg)] py-4 font-bold tracking-widest text-[var(--accent-color)] uppercase transition-colors hover:opacity-90"
+              >
+                <Plus className="h-5 w-5" /> {t('page.create')}
+              </button>
+            </>
+          ) : activeTab === 'roomExplorer' ? (
+            <>
+              <div className="popup-surface rounded-2xl p-4 text-sm text-[var(--text-secondary)]">
+                <p className="mb-2 text-[10px] font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                  {t('addCard.type.roomExplorer')}
+                </p>
+                <p className="leading-relaxed">{t('roomExplorer.createDescription') || 'Browse all rooms and control every entity from one place.'}</p>
+              </div>
+              <button
+                onClick={onCreateRoomExplorer}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--accent-color)] bg-[var(--accent-bg)] py-4 font-bold tracking-widest text-[var(--accent-color)] uppercase transition-colors hover:opacity-90"
               >
                 <Plus className="h-5 w-5" /> {t('page.create')}

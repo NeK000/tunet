@@ -167,3 +167,12 @@ export function isBatteryPage(pageId, pageSettings) {
   const settings = pageSettings[pageId];
   return settings?.type === 'battery' || pageId.startsWith('battery');
 }
+
+/**
+ * Check if a page is a Room Explorer page.
+ */
+export function isRoomExplorerPage(pageId, pageSettings) {
+  if (!pageId) return false;
+  const settings = pageSettings[pageId];
+  return settings?.type === 'room_explorer' || pageId.startsWith('room_explorer');
+}
