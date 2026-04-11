@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.15.3] — 2026-04-11
+
+### Added
+- No user-facing additions in this patch release.
+
+### Changed
+- Updated Weather card icon CDN source to the maintained Meteocons repository path.
+
+### Fixed
+- Restored missing Weather card condition icons caused by a broken upstream `@master` CDN reference (#134).
+
+
 ## [1.15.2] — 2026-04-05
 
 ### Added
