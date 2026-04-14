@@ -962,6 +962,7 @@
   "sensor.script.ran": "Kördes",
   "sensor.script.run": "Kör",
   "sensor.script.label": "Skript",
+  "sensor.select.label": "Val",
   "sensor.variant": "Kortstil",
   "sensor.variantDefault": "Standard",
   "sensor.variantNumber": "Tal",

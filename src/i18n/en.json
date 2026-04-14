@@ -962,6 +962,7 @@
   "sensor.script.ran": "Ran",
   "sensor.script.run": "Run",
   "sensor.script.label": "Script",
+  "sensor.select.label": "Select",
   "sensor.variant": "Card style",
   "sensor.variantDefault": "Default",
   "sensor.variantNumber": "Number",

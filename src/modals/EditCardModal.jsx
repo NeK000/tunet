@@ -2218,6 +2218,8 @@ export default function EditCardModal({
                 'automation',
                 'script',
                 'scene',
+                'select',
+                'input_select',
               ].includes(domain);
 
               const state = entity?.state;

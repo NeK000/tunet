@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
-import { Minus, Plus, Activity, Play } from 'lucide-react';
+import { Minus, Plus, Activity, Play, ChevronDown } from 'lucide-react';
 import { getHistory, getStatistics } from '../../services/haClient';
 import SparkLine from '../charts/SparkLine';
 import { Gauge, Donut, Bar } from '../charts/SensorGauge';
@@ -97,6 +97,8 @@ const SensorCard = memo(/** @param {any} props */ function SensorCard({
       : null;
   const sceneDisplayState = domain === 'scene' ? translate('sensor.scene.label') : null;
   const scriptDisplayState = domain === 'script' ? translate('sensor.script.label') : null;
+  const isSelectDomain = domain === 'select' || domain === 'input_select';
+  const selectOptions = isSelectDomain ? entity?.attributes?.options || [] : [];
   const displayState = isNumeric
     ? formatUnitValue(convertedNumericState, { fallback: '--' })
     : binaryDisplayState || toggleDisplayState || sceneDisplayState || scriptDisplayState || state;
@@ -436,6 +438,43 @@ const SensorCard = memo(/** @param {any} props */ function SensorCard({
   );
 
   const renderControls = () => {
+    if (isSelectDomain && selectOptions.length > 0) {
+      if (isSmall) {
+        return (
+          <div className="flex flex-shrink-0 items-center">
+            <ChevronDown className="h-3 w-3 text-[var(--text-secondary)]" />
+          </div>
+        );
+      }
+
+      return (
+        <div className="mt-4 w-full">
+          <div className="relative">
+            <select
+              value={state || ''}
+              onChange={(e) => {
+                e.stopPropagation();
+                onControl('select_option', e.target.value);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full appearance-none rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] py-2.5 pr-8 pl-3 text-xs font-bold tracking-widest text-[var(--text-primary)] uppercase outline-none transition-colors hover:bg-[var(--glass-bg-hover)]"
+            >
+              {selectOptions.map((option) => (
+                <option
+                  key={option}
+                  value={option}
+                  style={{ backgroundColor: 'var(--modal-bg)', color: 'var(--text-primary)' }}
+                >
+                  {option}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-secondary)]" />
+          </div>
+        </div>
+      );
+    }
+
     if (!showControls) return null;
 
     if (domain === 'script' || domain === 'scene') {

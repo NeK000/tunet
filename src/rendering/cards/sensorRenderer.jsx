@@ -1,5 +1,5 @@
 import { SensorCard } from '../../components';
-import { Activity, Hash, ToggleRight, Power } from '../../icons';
+import { Activity, Hash, ToggleRight, Power, ListChecks } from '../../icons';
 import { getIconComponent } from '../../icons';
 import { getSettings, renderMissingEntityWhenReady, withEditModeGuard } from '../helpers';
 
@@ -46,13 +46,15 @@ export function renderSensorCard(cardId, dragProps, getControls, cardStyle, sett
     input_number: Hash,
     input_boolean: ToggleRight,
     switch: Power,
+    select: ListChecks,
+    input_select: ListChecks,
     default: Activity,
   };
   const DefaultIcon = defaultIcons[domain] || defaultIcons.default;
   const sensorIconName = customIcons[cardId] || entity?.attributes?.icon;
   const Icon = sensorIconName ? getIconComponent(sensorIconName) || DefaultIcon : DefaultIcon;
 
-  const handleControl = (action) => {
+  const handleControl = (action, value) => {
     if (domain === 'input_number') {
       if (action === 'increment') callService('input_number', 'increment', { entity_id: cardId });
       if (action === 'decrement') callService('input_number', 'decrement', { entity_id: cardId });
@@ -67,6 +69,11 @@ export function renderSensorCard(cardId, dragProps, getControls, cardStyle, sett
     }
     if (domain === 'script' || domain === 'scene') {
       if (action === 'turn_on') callService(domain, 'turn_on', { entity_id: cardId });
+    }
+    if (domain === 'select' || domain === 'input_select') {
+      if (action === 'select_option' && value) {
+        callService(domain, 'select_option', { entity_id: cardId, option: value });
+      }
     }
   };
 

@@ -436,6 +436,7 @@ export function ModalEntitySlice({ core, modals, cardConfig, entityHelpers, reso
             haToken={
               config.authMethod === 'oauth' ? authRef?.current?.accessToken || '' : config.token
             }
+            callService={callService}
             t={t}
           />
         </ModalSuspense>

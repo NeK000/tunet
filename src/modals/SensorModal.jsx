@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Activity } from 'lucide-react';
+import { X, Activity, ChevronDown } from 'lucide-react';
 import { logger } from '../utils/logger';
 import { getHistory, getHistoryRest, getStatistics } from '../services/haClient';
 import SensorHistoryGraph from '../components/charts/SensorHistoryGraph';
@@ -25,6 +25,7 @@ export default function SensorModal({
   conn,
   haUrl,
   haToken,
+  callService,
   t = (key) => key,
 }) {
   const { unitsMode } = useConfig();
@@ -87,6 +88,7 @@ export default function SensorModal({
       'media_player',
       'scene',
       'script',
+      'select',
       'input_select',
     ];
 
@@ -475,6 +477,38 @@ export default function SensorModal({
               </div>
             </div>
           </div>
+
+          {/* Select option control */}
+          {(domain === 'select' || domain === 'input_select') && callService && (
+            <div className="mb-6 shrink-0">
+              <label className="mb-2 block text-xs font-bold tracking-widest text-[var(--text-muted)] uppercase">
+                {t('sensor.select.label') || 'Select'}
+              </label>
+              <div className="relative">
+                <select
+                  value={state || ''}
+                  onChange={(e) => {
+                    callService(domain, 'select_option', {
+                      entity_id: entityId,
+                      option: e.target.value,
+                    });
+                  }}
+                  className="w-full appearance-none rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] py-3 pr-10 pl-4 text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase outline-none transition-colors hover:bg-[var(--glass-bg-hover)]"
+                >
+                  {(attrs.options || []).map((option) => (
+                    <option
+                      key={option}
+                      value={option}
+                      style={{ backgroundColor: 'var(--modal-bg)', color: 'var(--text-primary)' }}
+                    >
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" />
+              </div>
+            </div>
+          )}
 
           {/* Main Content Area */}
           <div className="relative flex min-h-0 flex-1 flex-col">

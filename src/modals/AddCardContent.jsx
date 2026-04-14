@@ -354,7 +354,9 @@ function AddCardContent({
             id.startsWith('input_boolean.') ||
             id.startsWith('binary_sensor.') ||
             id.startsWith('switch.') ||
-            id.startsWith('automation.')) &&
+            id.startsWith('automation.') ||
+            id.startsWith('select.') ||
+            id.startsWith('input_select.')) &&
           !excludedOnPage.has(id)
         );
       }

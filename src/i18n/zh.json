@@ -866,6 +866,7 @@
   "sensor.script.ran": "已执行",
   "sensor.script.run": "执行",
   "sensor.script.label": "脚本",
+  "sensor.select.label": "选择",
   "sensor.variant": "卡片样式",
   "sensor.variantDefault": "默认",
   "sensor.variantNumber": "数字",
