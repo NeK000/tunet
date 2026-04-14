@@ -131,7 +131,11 @@ export default function SensorModal({
           let events = [];
           const currentDomain = activeEntity.entity_id?.split('.')?.[0];
           const currentState = activeEntity.state;
-          const numericHistory = isEntityNumeric(currentDomain, activeEntity.entity_id, currentState);
+          const numericHistory = isEntityNumeric(
+            currentDomain,
+            activeEntity.entity_id,
+            currentState
+          );
 
           // Determine if we need history data for activity/events display
           const needsActivityData = shouldShowEntityActivity(
@@ -468,258 +472,258 @@ export default function SensorModal({
     >
       {() => (
         <>
-        {/* Close Button */}
-        <div className="absolute top-6 right-6 z-50 md:top-10 md:right-10">
-          <button onClick={onClose} className="modal-close" aria-label={t('common.close')}>
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* LEFT PANEL: Visuals & Graph (3 cols) */}
-        <div
-          className="relative flex shrink-0 flex-col overflow-hidden border-b p-6 md:p-10 lg:col-span-3 lg:border-r lg:border-b-0"
-          style={{ borderColor: 'var(--glass-border)' }}
-        >
-          {/* Header */}
-          <div className="mb-6 flex shrink-0 items-center gap-4">
-            <div
-              className="rounded-2xl p-4 transition-all duration-500"
-              style={{
-                backgroundColor:
-                  entity.state === 'unavailable'
-                    ? 'var(--status-error-bg)'
-                    : 'var(--status-info-bg)',
-                color:
-                  entity.state === 'unavailable'
-                    ? 'var(--status-error-fg)'
-                    : 'var(--status-info-fg)',
-              }}
-            >
-              <Icon className="h-8 w-8" />
-            </div>
-            <div className="min-w-0">
-              <h2
-                id={modalTitleId}
-                className="truncate pr-1 text-lg leading-none font-light tracking-tight text-[var(--text-primary)] uppercase italic md:text-2xl"
-              >
-                {name}
-              </h2>
-              <div
-                className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 ${entity.state === 'unavailable' ? 'border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-[var(--status-error-fg)]' : 'border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-secondary)]'}`}
-              >
-                <div
-                  className={`h-1.5 w-1.5 rounded-full ${entity.state === 'unavailable' ? 'bg-[var(--status-error-fg)]' : 'bg-[var(--status-success-fg)] shadow-[0_0_6px_var(--status-success-fg)]'}`}
-                />
-                <span className="pt-[1px] text-[10px] leading-none font-bold tracking-widest uppercase">
-                  {String(displayState)} {displayUnit}
-                </span>
-              </div>
-            </div>
+          {/* Close Button */}
+          <div className="absolute top-6 right-6 z-50 md:top-10 md:right-10">
+            <button onClick={onClose} className="modal-close" aria-label={t('common.close')}>
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* Select option control */}
-          {(domain === 'select' || domain === 'input_select') && callService && (
-            <div className="mb-6 shrink-0">
-              <ModernDropdown
-                label={t('sensor.select.label') || 'Select'}
-                icon={List}
-                options={attrs.options || []}
-                current={state || ''}
-                onChange={(option) => {
-                  callService(domain, 'select_option', {
-                    entity_id: entityId,
-                    option,
-                  });
+          {/* LEFT PANEL: Visuals & Graph (3 cols) */}
+          <div
+            className="relative flex shrink-0 flex-col overflow-hidden border-b p-6 md:p-10 lg:col-span-3 lg:border-r lg:border-b-0"
+            style={{ borderColor: 'var(--glass-border)' }}
+          >
+            {/* Header */}
+            <div className="mb-6 flex shrink-0 items-center gap-4">
+              <div
+                className="rounded-2xl p-4 transition-all duration-500"
+                style={{
+                  backgroundColor:
+                    entity.state === 'unavailable'
+                      ? 'var(--status-error-bg)'
+                      : 'var(--status-info-bg)',
+                  color:
+                    entity.state === 'unavailable'
+                      ? 'var(--status-error-fg)'
+                      : 'var(--status-info-fg)',
                 }}
-                placeholder={t('sensor.select.label') || 'Select'}
-              />
-            </div>
-          )}
-
-          {/* Main Content Area */}
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            {isNumeric && !hasActivity ? (
-              <div className="relative h-full min-h-[250px] w-full">
-                {loading ? (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--text-primary)] opacity-20"></div>
-                  </div>
-                ) : (
-                  <div className="-mr-4 -ml-4 h-full md:mr-0">
-                    <SensorHistoryGraph
-                      data={history}
-                      height={350}
-                      noDataLabel={t('sensorInfo.noHistory')}
-                      strokeColor="var(--text-primary)"
-                      areaColor="var(--text-primary)"
-                    />
-                  </div>
-                )}
+              >
+                <Icon className="h-8 w-8" />
               </div>
-            ) : (
-              <div className="custom-scrollbar -mr-2 flex-1 overflow-y-auto pr-2">
-                {loading && (
-                  <div className="flex h-[100px] items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--text-primary)] opacity-20"></div>
-                  </div>
-                )}
+              <div className="min-w-0">
+                <h2
+                  id={modalTitleId}
+                  className="truncate pr-1 text-lg leading-none font-light tracking-tight text-[var(--text-primary)] uppercase italic md:text-2xl"
+                >
+                  {name}
+                </h2>
+                <div
+                  className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 ${entity.state === 'unavailable' ? 'border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-[var(--status-error-fg)]' : 'border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-secondary)]'}`}
+                >
+                  <div
+                    className={`h-1.5 w-1.5 rounded-full ${entity.state === 'unavailable' ? 'bg-[var(--status-error-fg)]' : 'bg-[var(--status-success-fg)] shadow-[0_0_6px_var(--status-success-fg)]'}`}
+                  />
+                  <span className="pt-[1px] text-[10px] leading-none font-bold tracking-widest uppercase">
+                    {String(displayState)} {displayUnit}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-                {!loading && hasActivity && (
-                  <>
-                    <h4 className="mb-4 bg-transparent text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-80">
-                      {t('history.activity')}
-                    </h4>
-                    <div className="mb-6">
-                      <BinaryTimeline
-                        events={historyEvents}
-                        startTime={timeWindow.start}
-                        endTime={timeWindow.end}
-                      />
-                    </div>
-
-                    <h4 className="mb-4 border-b border-[var(--glass-border)] bg-transparent pb-2 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-80 shadow-sm">
-                      {t('history.log')}
-                    </h4>
-                    <div className="custom-scrollbar max-h-64 space-y-1 overflow-y-auto pr-2">
-                      {recentEvents.length === 0 && (
-                        <div className="py-8 text-center text-sm text-[var(--text-secondary)] italic opacity-60">
-                          {t('sensorInfo.noHistory')}
-                        </div>
-                      )}
-                      {recentEvents.map((event, idx) => {
-                        let stateLabel = formatStateLabel(event.state, deviceClass);
-                        const domain = entityId?.split('.')?.[0];
-
-                        // Specific formatting for Scenes in log
-                        if (
-                          domain === 'scene' &&
-                          String(event.state).match(/^\d{4}-\d{2}-\d{2}T/)
-                        ) {
-                          stateLabel = `${t('state.sceneSet')} ${formatRelativeTime(event.state, t)}`;
-                        }
-
-                        const useStateOnly =
-                          (domain === 'binary_sensor' || domain === 'motion') &&
-                          (deviceClass === 'motion' ||
-                            deviceClass === 'occupancy' ||
-                            deviceClass === 'presence');
-                        const logLabel =
-                          useStateOnly || domain === 'scene'
-                            ? domain === 'scene'
-                              ? stateLabel
-                              : t('history.stateOnly').replace('{state}', stateLabel)
-                            : t('history.wasState').replace('{state}', stateLabel);
-
-                        return (
-                          <div
-                            key={`${event.lastChanged || idx}`}
-                            className="group flex items-center gap-4 rounded-xl border border-transparent p-3 transition-colors hover:border-white/5 hover:bg-white/5"
-                          >
-                            <div
-                              className={`h-2 w-2 flex-shrink-0 rounded-full ${event.state === 'on' || event.state === 'true' || event.state === 'open' || event.state === 'unlocked' || event.state === 'playing' || event.state > 0 ? 'bg-[var(--status-success-fg)] opacity-80' : 'bg-[var(--text-secondary)] opacity-35'}`}
-                            />
-                            <div className="flex min-w-0 flex-1 items-baseline justify-between gap-4">
-                              <span className="truncate text-sm font-medium text-[var(--text-primary)]">
-                                {logLabel}
-                              </span>
-                              <span className="font-mono text-xs whitespace-nowrap text-[var(--text-secondary)] opacity-70 transition-opacity group-hover:opacity-100">
-                                {formatRelativeTime(event.time, t)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-
-                {!loading && !hasActivity && isNumeric && (
-                  <div className="-mr-4 -ml-4 h-full md:mr-0">
-                    <SensorHistoryGraph
-                      data={history}
-                      height={350}
-                      noDataLabel={t('sensorInfo.noHistory')}
-                      strokeColor="var(--text-primary)"
-                      areaColor="var(--text-primary)"
-                    />
-                  </div>
-                )}
+            {/* Select option control */}
+            {(domain === 'select' || domain === 'input_select') && callService && (
+              <div className="mb-6 shrink-0">
+                <ModernDropdown
+                  label={t('sensor.select.label') || 'Select'}
+                  icon={List}
+                  options={attrs.options || []}
+                  current={state || ''}
+                  onChange={(option) => {
+                    callService(domain, 'select_option', {
+                      entity_id: entityId,
+                      option,
+                    });
+                  }}
+                  placeholder={t('sensor.select.label') || 'Select'}
+                />
               </div>
             )}
-          </div>
-        </div>
 
-        {/* RIGHT PANEL: Meta & Attributes (2 cols) */}
-        <div className="relative flex flex-col gap-10 overflow-y-auto bg-[var(--glass-bg)]/10 p-6 md:p-10 lg:col-span-2">
-          {/* Timestamps */}
-          <div>
-            <h4 className="mb-6 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-40">
-              {t('sensorInfo.timeline')}
-            </h4>
-            <div className="space-y-6">
-              <div className="relative border-l border-[var(--glass-border)] pl-4">
-                <div className="absolute top-1.5 -left-[3px] h-1.5 w-1.5 rounded-full bg-[var(--accent-color)]"></div>
-                <p className="mb-0.5 text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase opacity-50">
-                  {t('sensorInfo.lastChanged')}
-                </p>
-                <p className="text-sm font-medium text-[var(--text-primary)]">{lastChanged}</p>
-              </div>
-              <div className="relative border-l border-[var(--glass-border)] pl-4">
-                <div className="absolute top-1.5 -left-[3px] h-1.5 w-1.5 rounded-full bg-purple-400"></div>
-                <p className="mb-0.5 text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase opacity-50">
-                  {t('sensorInfo.lastUpdated')}
-                </p>
-                <p className="text-sm font-medium text-[var(--text-primary)]">{lastUpdated}</p>
-              </div>
+            {/* Main Content Area */}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              {isNumeric && !hasActivity ? (
+                <div className="relative h-full min-h-[250px] w-full">
+                  {loading ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--text-primary)] opacity-20"></div>
+                    </div>
+                  ) : (
+                    <div className="-mr-4 -ml-4 h-full md:mr-0">
+                      <SensorHistoryGraph
+                        data={history}
+                        height={350}
+                        noDataLabel={t('sensorInfo.noHistory')}
+                        strokeColor="var(--text-primary)"
+                        areaColor="var(--text-primary)"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="custom-scrollbar -mr-2 flex-1 overflow-y-auto pr-2">
+                  {loading && (
+                    <div className="flex h-[100px] items-center justify-center">
+                      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--text-primary)] opacity-20"></div>
+                    </div>
+                  )}
+
+                  {!loading && hasActivity && (
+                    <>
+                      <h4 className="mb-4 bg-transparent text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-80">
+                        {t('history.activity')}
+                      </h4>
+                      <div className="mb-6">
+                        <BinaryTimeline
+                          events={historyEvents}
+                          startTime={timeWindow.start}
+                          endTime={timeWindow.end}
+                        />
+                      </div>
+
+                      <h4 className="mb-4 border-b border-[var(--glass-border)] bg-transparent pb-2 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-80 shadow-sm">
+                        {t('history.log')}
+                      </h4>
+                      <div className="custom-scrollbar max-h-64 space-y-1 overflow-y-auto pr-2">
+                        {recentEvents.length === 0 && (
+                          <div className="py-8 text-center text-sm text-[var(--text-secondary)] italic opacity-60">
+                            {t('sensorInfo.noHistory')}
+                          </div>
+                        )}
+                        {recentEvents.map((event, idx) => {
+                          let stateLabel = formatStateLabel(event.state, deviceClass);
+                          const domain = entityId?.split('.')?.[0];
+
+                          // Specific formatting for Scenes in log
+                          if (
+                            domain === 'scene' &&
+                            String(event.state).match(/^\d{4}-\d{2}-\d{2}T/)
+                          ) {
+                            stateLabel = `${t('state.sceneSet')} ${formatRelativeTime(event.state, t)}`;
+                          }
+
+                          const useStateOnly =
+                            (domain === 'binary_sensor' || domain === 'motion') &&
+                            (deviceClass === 'motion' ||
+                              deviceClass === 'occupancy' ||
+                              deviceClass === 'presence');
+                          const logLabel =
+                            useStateOnly || domain === 'scene'
+                              ? domain === 'scene'
+                                ? stateLabel
+                                : t('history.stateOnly').replace('{state}', stateLabel)
+                              : t('history.wasState').replace('{state}', stateLabel);
+
+                          return (
+                            <div
+                              key={`${event.lastChanged || idx}`}
+                              className="group flex items-center gap-4 rounded-xl border border-transparent p-3 transition-colors hover:border-white/5 hover:bg-white/5"
+                            >
+                              <div
+                                className={`h-2 w-2 flex-shrink-0 rounded-full ${event.state === 'on' || event.state === 'true' || event.state === 'open' || event.state === 'unlocked' || event.state === 'playing' || event.state > 0 ? 'bg-[var(--status-success-fg)] opacity-80' : 'bg-[var(--text-secondary)] opacity-35'}`}
+                              />
+                              <div className="flex min-w-0 flex-1 items-baseline justify-between gap-4">
+                                <span className="truncate text-sm font-medium text-[var(--text-primary)]">
+                                  {logLabel}
+                                </span>
+                                <span className="font-mono text-xs whitespace-nowrap text-[var(--text-secondary)] opacity-70 transition-opacity group-hover:opacity-100">
+                                  {formatRelativeTime(event.time, t)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {!loading && !hasActivity && isNumeric && (
+                    <div className="-mr-4 -ml-4 h-full md:mr-0">
+                      <SensorHistoryGraph
+                        data={history}
+                        height={350}
+                        noDataLabel={t('sensorInfo.noHistory')}
+                        strokeColor="var(--text-primary)"
+                        areaColor="var(--text-primary)"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* History Range */}
-          <div>
-            <h4 className="mb-4 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-40">
-              {t('history.rangeHours')}
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {[6, 12, 24, 48, 72].map((hours) => (
-                <button
-                  key={hours}
-                  onClick={() => setHistoryHours(hours)}
-                  className={`rounded-full border px-3 py-2 text-[10px] font-bold tracking-widest uppercase transition-all ${historyHours === hours ? 'border-[var(--glass-border)] bg-[var(--glass-bg-hover)] text-[var(--text-primary)]' : 'border-transparent bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
-                >
-                  {hours}h
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Attributes */}
-          {attributeEntries.length > 0 && (
-            <div className="flex-1">
-              <div className="mb-6 flex items-center justify-between">
-                <h4 className="text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-40">
-                  {t('sensorInfo.attributes')}
-                </h4>
+          {/* RIGHT PANEL: Meta & Attributes (2 cols) */}
+          <div className="relative flex flex-col gap-10 overflow-y-auto bg-[var(--glass-bg)]/10 p-6 md:p-10 lg:col-span-2">
+            {/* Timestamps */}
+            <div>
+              <h4 className="mb-6 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-40">
+                {t('sensorInfo.timeline')}
+              </h4>
+              <div className="space-y-6">
+                <div className="relative border-l border-[var(--glass-border)] pl-4">
+                  <div className="absolute top-1.5 -left-[3px] h-1.5 w-1.5 rounded-full bg-[var(--accent-color)]"></div>
+                  <p className="mb-0.5 text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase opacity-50">
+                    {t('sensorInfo.lastChanged')}
+                  </p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{lastChanged}</p>
+                </div>
+                <div className="relative border-l border-[var(--glass-border)] pl-4">
+                  <div className="absolute top-1.5 -left-[3px] h-1.5 w-1.5 rounded-full bg-purple-400"></div>
+                  <p className="mb-0.5 text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase opacity-50">
+                    {t('sensorInfo.lastUpdated')}
+                  </p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{lastUpdated}</p>
+                </div>
               </div>
+            </div>
 
-              <div className="space-y-4">
-                {attributeEntries.map(([key, value]) => (
-                  <div key={key} className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold tracking-wider text-[var(--text-secondary)] capitalize uppercase opacity-40">
-                      {key.replace(/_/g, ' ')}
-                    </span>
-                    <span className="font-mono text-sm leading-snug font-medium break-words text-[var(--text-primary)] opacity-80">
-                      {String(value)}
-                    </span>
-                  </div>
+            {/* History Range */}
+            <div>
+              <h4 className="mb-4 text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-40">
+                {t('history.rangeHours')}
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {[6, 12, 24, 48, 72].map((hours) => (
+                  <button
+                    key={hours}
+                    onClick={() => setHistoryHours(hours)}
+                    className={`rounded-full border px-3 py-2 text-[10px] font-bold tracking-widest uppercase transition-all ${historyHours === hours ? 'border-[var(--glass-border)] bg-[var(--glass-bg-hover)] text-[var(--text-primary)]' : 'border-transparent bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-[var(--glass-bg-hover)] hover:text-[var(--text-primary)]'}`}
+                  >
+                    {hours}h
+                  </button>
                 ))}
               </div>
             </div>
-          )}
 
-          <div className="mt-auto pt-10 opacity-30">
-            <p className="text-center font-mono text-[10px] select-all">{entityId}</p>
+            {/* Attributes */}
+            {attributeEntries.length > 0 && (
+              <div className="flex-1">
+                <div className="mb-6 flex items-center justify-between">
+                  <h4 className="text-xs font-bold tracking-widest text-[var(--text-secondary)] uppercase opacity-40">
+                    {t('sensorInfo.attributes')}
+                  </h4>
+                </div>
+
+                <div className="space-y-4">
+                  {attributeEntries.map(([key, value]) => (
+                    <div key={key} className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold tracking-wider text-[var(--text-secondary)] capitalize uppercase opacity-40">
+                        {key.replace(/_/g, ' ')}
+                      </span>
+                      <span className="font-mono text-sm leading-snug font-medium break-words text-[var(--text-primary)] opacity-80">
+                        {String(value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-auto pt-10 opacity-30">
+              <p className="text-center font-mono text-[10px] select-all">{entityId}</p>
+            </div>
           </div>
-        </div>
         </>
       )}
     </AccessibleModalShell>

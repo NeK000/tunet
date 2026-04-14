@@ -228,7 +228,9 @@ export default function ModernDropdown({
         aria-label={`${labelText}: ${selectedLabel}`}
         className={`${baseButtonClass} ${buttonClassName}`.trim()}
       >
-        <div className={`flex min-w-0 items-center ${Icon ? (isCompact ? 'gap-2' : 'gap-3') : 'gap-0'}`}>
+        <div
+          className={`flex min-w-0 items-center ${Icon ? (isCompact ? 'gap-2' : 'gap-3') : 'gap-0'}`}
+        >
           {Icon ? (
             <Icon
               className={`${isCompact ? 'h-3.5 w-3.5' : 'h-4 w-4'} flex-shrink-0 text-[var(--text-muted)] transition-colors group-hover:text-[var(--accent-color)]`}
@@ -246,13 +248,11 @@ export default function ModernDropdown({
         />
       </button>
       {isOpen &&
-        (menuPortal && typeof document !== 'undefined'
-          ? createPortal(menuContent, document.body)
-          : (
-              <div className="absolute top-full left-0 z-50 mt-2 w-full">
-                {menuContent}
-              </div>
-            ))}
+        (menuPortal && typeof document !== 'undefined' ? (
+          createPortal(menuContent, document.body)
+        ) : (
+          <div className="absolute top-full left-0 z-50 mt-2 w-full">{menuContent}</div>
+        ))}
     </div>
   );
 }

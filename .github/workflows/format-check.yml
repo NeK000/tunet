@@ -47,8 +47,23 @@ jobs:
       - name: Check formatting (changed files only)
         if: steps.changed.outputs.any_changed == 'true'
         run: |
-          files='${{ steps.changed.outputs.all_changed_files }}'
-          printf '%s\n' "$files" | xargs -d '\n' npx prettier --check
+          mapfile -t files <<'EOF'
+          ${{ steps.changed.outputs.all_changed_files }}
+          EOF
+
+          filtered_files=()
+          for file in "${files[@]}"; do
+            if [ -n "$file" ]; then
+              filtered_files+=("$file")
+            fi
+          done
+
+          if [ "${#filtered_files[@]}" -eq 0 ]; then
+            echo "No format-relevant changed files."
+            exit 0
+          fi
+
+          npx prettier --check "${filtered_files[@]}"
 
       - name: No format-relevant changes
         if: steps.changed.outputs.any_changed != 'true'

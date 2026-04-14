@@ -32,7 +32,7 @@ const baseProps = (overrides = {}) => ({
   controls: null,
   onControl: vi.fn(),
   onOpen: vi.fn(),
-  t: (key) => ({ 'common.on': 'On', 'common.off': 'Off' }[key] || key),
+  t: (key) => ({ 'common.on': 'On', 'common.off': 'Off' })[key] || key,
   ...overrides,
 });
 
@@ -77,14 +77,12 @@ describe('SensorCard', () => {
         {...baseProps({
           settings: { size: 'large' },
           t: (key) =>
-            (
-              {
-                'status.on': 'Enabled',
-                'status.off': 'Disabled',
-                'common.on': 'Turn on',
-                'common.off': 'Turn off',
-              }[key] || key
-            ),
+            ({
+              'status.on': 'Enabled',
+              'status.off': 'Disabled',
+              'common.on': 'Turn on',
+              'common.off': 'Turn off',
+            })[key] || key,
         })}
         isMobile
       />

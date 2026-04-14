@@ -241,23 +241,26 @@ export function useSettingsSync({ haUserId, contextSettersRef }) {
     [currentRevision, contextSettersRef, refreshHistory]
   );
 
-  const reconcileFromServer = useCallback(async (options = {}) => {
-    if (!haUserId) return false;
+  const reconcileFromServer = useCallback(
+    async (options = {}) => {
+      if (!haUserId) return false;
 
-    const forcedServerRevision = Number.isFinite(Number(options.forceServerRevision))
-      ? Number(options.forceServerRevision)
-      : null;
+      const forcedServerRevision = Number.isFinite(Number(options.forceServerRevision))
+        ? Number(options.forceServerRevision)
+        : null;
 
-    try {
-      const row = await apiFetchCurrentSettings(haUserId, deviceIdRef.current);
-      updateBackgroundSyncAvailability(true);
-      return applyServerRow(row, { ...options, forceServerRevision: forcedServerRevision });
-    } catch (error) {
-      updateBackgroundSyncAvailability(false, error);
-      // ignore reconciliation errors
-      return false;
-    }
-  }, [haUserId, applyServerRow, updateBackgroundSyncAvailability]);
+      try {
+        const row = await apiFetchCurrentSettings(haUserId, deviceIdRef.current);
+        updateBackgroundSyncAvailability(true);
+        return applyServerRow(row, { ...options, forceServerRevision: forcedServerRevision });
+      } catch (error) {
+        updateBackgroundSyncAvailability(false, error);
+        // ignore reconciliation errors
+        return false;
+      }
+    },
+    [haUserId, applyServerRow, updateBackgroundSyncAvailability]
+  );
 
   const pushCurrentToServer = useCallback(
     async (options = {}) => {
@@ -317,7 +320,7 @@ export function useSettingsSync({ haUserId, contextSettersRef }) {
           setStatus('error');
           setError(saveError?.message || 'Failed to sync settings');
         }
-          updateBackgroundSyncAvailability(false, saveError);
+        updateBackgroundSyncAvailability(false, saveError);
         throw saveError;
       }
     },
